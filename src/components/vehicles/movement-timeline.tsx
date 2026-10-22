@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, History } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, History, KeyRound } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatDateTime, formatRelative } from '@/lib/format'
@@ -76,6 +76,14 @@ export function MovementTimeline({
                   {formatRelative(event.occurred_at)}
                 </p>
               </div>
+
+              {event.keys_count !== null ? (
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-white/40 px-2.5 py-1 text-xs">
+                  <KeyRound className="size-3 text-muted-foreground" />
+                  <span className="font-medium">{event.keys_count}</span>
+                  {released ? 'released' : 'brought back'}
+                </p>
+              ) : null}
 
               {event.staff_name || event.recipient_name ? (
                 <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs">

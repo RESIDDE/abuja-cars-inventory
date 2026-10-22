@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { Field } from '@/components/common/field'
+import { NumberStepper } from '@/components/common/number-stepper'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,10 +17,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { useRecordMovement } from '@/hooks/use-vehicle-events'
+import { useRecordMovement, useVehicleEvents } from '@/hooks/use-vehicle-events'
 import { describeDbError } from '@/lib/errors'
-import { toDateTimeInputValue, vehicleTitle } from '@/lib/format'
+import { formatDate, toDateTimeInputValue, vehicleTitle } from '@/lib/format'
 import type { VehicleEventType, VehicleWithOwner } from '@/types/database'
 
 const schema = z.object({
@@ -47,6 +49,16 @@ export function MovementDialog({
   const recordMovement = useRecordMovement()
   const releasing = eventType === 'released'
 
+  // How many keys the yard currently holds, and what went out last time.
+  const heldKeys = vehicle?.keys_count ?? 0
+  const { data: events = [] } = useVehicleEvents(vehicle?.id, open)
+  const lastRelease = React.useMemo(
+    () => events.find((e) => e.event_type === 'released' && e.keys_count !== null) ?? null,
+    [events],
+  )
+
+  const [keys, setKeys] = React.useState(0)
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -65,7 +77,10 @@ export function MovementDialog({
       recipientName: '',
       notes: '',
     })
-  }, [open, form])
+    // Releasing normally hands over everything the yard holds; checking back in
+    // normally returns however many went out.
+    setKeys(releasing ? heldKeys : (lastRelease?.keys_count ?? heldKeys))
+  }, [open, form, releasing, heldKeys, lastRelease])
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!vehicle) return
@@ -78,6 +93,7 @@ export function MovementDialog({
         staffName: values.staffName,
         recipientName: values.recipientName,
         notes: values.notes,
+        keysCount: keys,
       })
       toast.success(releasing ? 'Vehicle released' : 'Vehicle checked back in')
       onOpenChange(false)
@@ -111,6 +127,32 @@ export function MovementDialog({
               {...form.register('occurredAt')}
             />
           </Field>
+
+          <div className="space-y-1.5">
+            <Label>{releasing ? 'Keys released' : 'Keys brought back'}</Label>
+            <div className="flex flex-wrap items-center gap-3">
+              <NumberStepper
+                value={keys}
+                onChange={setKeys}
+                max={releasing ? Math.max(heldKeys, 1) : 99}
+                label={releasing ? 'keys released' : 'keys brought back'}
+              />
+              <p className="text-xs text-muted-foreground">
+                {releasing
+                  ? `${heldKeys} held on this vehicle`
+                  : lastRelease
+                    ? `${lastRelease.keys_count} released on ${formatDate(lastRelease.occurred_at)}`
+                    : 'Nothing recorded as released'}
+              </p>
+            </div>
+
+            {!releasing && lastRelease && keys < (lastRelease.keys_count ?? 0) ? (
+              <p className="text-xs text-destructive">
+                That is {(lastRelease.keys_count ?? 0) - keys} fewer than went out. Worth a
+                note below.
+              </p>
+            ) : null}
+          </div>
 
           <Field label="Staff name" htmlFor="staffName" hint="Optional — who handled it">
             <Input id="staffName" {...form.register('staffName')} />

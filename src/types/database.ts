@@ -63,6 +63,8 @@ export interface VehicleEvent {
   staff_name: string | null
   recipient_name: string | null
   notes: string | null
+  /** Keys handed over on a release, or brought back on a check-in. */
+  keys_count: number | null
   created_by: string | null
   created_at: string
 }

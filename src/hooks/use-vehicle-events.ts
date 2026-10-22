@@ -31,6 +31,8 @@ export interface MovementInput {
   staffName?: string | null
   recipientName?: string | null
   notes?: string | null
+  /** Null means "not recorded", which leaves the vehicle's key count alone. */
+  keysCount?: number | null
 }
 
 /**
@@ -50,6 +52,7 @@ export function useRecordMovement() {
         p_staff_name: input.staffName ?? null,
         p_recipient_name: input.recipientName ?? null,
         p_notes: input.notes ?? null,
+        p_keys_count: input.keysCount ?? null,
       })
       if (error) throw error
       return data as VehicleEvent

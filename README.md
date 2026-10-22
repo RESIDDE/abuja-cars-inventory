@@ -68,6 +68,28 @@ its filters from the URL (`?status=in_stock|released`, `?owner=<id>`), so
 dashboard tiles can deep-link into a filtered view and it survives a refresh.
 `?new=1` opens the check-in form.
 
+## Keys changing hands
+
+Releasing or checking a vehicle back in records **how many keys moved**, with a
+stepper rather than a text field — it gets used one-handed next to a car.
+
+The number is not just logged, it adjusts what the yard holds:
+
+| Movement | Effect on `vi_vehicles.keys_count` |
+| --- | --- |
+| Released with *n* | `greatest(0, held - n)` — never negative |
+| Checked in with *n* | `held + n` |
+| Either, not recorded (`null`) | unchanged |
+
+Null meaning "not recorded" is what lets the opening check-in leave the count
+alone, so intake does not double up on the keys the form already captured.
+
+The defaults follow what normally happens: releasing offers every key the yard
+holds, checking back in offers however many went out last time. If fewer come
+back than went out, the dialog says so and asks for a note. It never blocks —
+sometimes a key really is lost, and the log should say that rather than refuse
+to record it.
+
 ## Not creating the same customer twice
 
 Typing a phone number into the "New" owner section checks it against everyone

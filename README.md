@@ -42,6 +42,30 @@ both returning to `/dashboard`. Set your site URL and that redirect under
 **Authentication → URL Configuration** in the Supabase dashboard, or the
 emailed links will bounce.
 
+## On a phone
+
+The platform-layer fixes that separate "a website in a browser" from something
+that feels installed. Each is one declaration, and each is there for a reason:
+
+| Symptom | Fix |
+| --- | --- |
+| Page zooms in on an input and never zooms back | Inputs are 16px under `(pointer: coarse)` |
+| Hover state stuck after a tap | `hoverOnlyWhenSupported`, plus `(hover: hover)` around the hand-written rules |
+| Grey flash on tap | `-webkit-tap-highlight-color: transparent`, with `:active` feedback to replace it |
+| Pull-to-refresh hijacks a scroll | `overscroll-behavior: none` on the root, `contain` on dialogs |
+| Content under the notch or home indicator | `viewport-fit=cover` plus `env(safe-area-inset-*)` on the header, main and dialogs |
+| Taps feel laggy | `touch-action: manipulation` on controls |
+| Long press selects a button's label | `user-select: none` on controls only — never on `<a>`, since the tel: and mailto: links are content people copy |
+
+**Zoom is deliberately not disabled.** `user-scalable=no` and `maximum-scale=1`
+are accessibility failures, and iOS Safari has ignored them since iOS 10 anyway.
+The input font size was the actual cause of unwanted zooming, and that is fixed
+at the source.
+
+Tailwind v3's `hoverOnlyWhenSupported` does not cover `group-hover`, which
+compiles to `.group:hover .group-hover\:x`. Those decorative nudges are
+neutralised under `@media (hover: none)` instead.
+
 ## Deploying
 
 The app is a static bundle plus a Supabase project. [vercel.json](vercel.json)

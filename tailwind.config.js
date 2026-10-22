@@ -2,6 +2,9 @@ import tailwindcssAnimate from 'tailwindcss-animate'
 
 /** @type {import('tailwindcss').Config} */
 export default {
+  // Touch browsers fake :hover and leave it stuck after a tap. This compiles
+  // every `hover:` utility behind @media (hover: hover).
+  future: { hoverOnlyWhenSupported: true },
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {

@@ -50,7 +50,56 @@
   }
 
   html {
+    /* No font inflation in landscape. */
     -webkit-text-size-adjust: 100%;
+    /* The translucent grey flash on tap is the loudest "this is a website"
+       tell. Removing it means every control needs its own :active state. */
+    -webkit-tap-highlight-color: transparent;
+    /* Stop pull-to-refresh and the whole-page rubber band; this is an app, not
+       a document. Inner scrollers use `contain` instead. */
+    overscroll-behavior: none;
+  }
+
+  body {
+    overscroll-behavior: none;
+  }
+
+  /* Nothing may force the page wider than the screen — that is what makes a
+     phone render the whole layout shrunk down. */
+  img,
+  svg,
+  video,
+  canvas {
+    max-width: 100%;
+  }
+
+  /* iOS Safari zooms the page when focus lands on an input smaller than 16px,
+     and does NOT zoom back out on blur. Sizing the inputs is the fix; disabling
+     zoom would be an accessibility failure. */
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: 16px;
+    }
+  }
+
+  /* Removes the 300ms double-tap-zoom wait, and stops a long press selecting a
+     button's label the way no native control does. Left off <a> on purpose:
+     the tel: and mailto: links are content people copy. */
+  button,
+  [role='button'],
+  [role='tab'],
+  [role='menuitem'],
+  [role='option'] {
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  a {
+    touch-action: manipulation;
   }
 
   body {
@@ -136,6 +185,7 @@
      at all. */
   [role='dialog'],
   [role='alertdialog'] {
+    overscroll-behavior: contain;
     background-image: linear-gradient(
       135deg,
       hsl(158 26% 88% / 0.86),
@@ -160,9 +210,13 @@
     cursor: pointer;
   }
 
-  .tile-interactive:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 26px 50px -26px hsl(160 22% 18% / 0.42);
+  /* Touch browsers apply :hover on tap and leave it there, so a tile would
+     stay lifted after being pressed. :active below covers touch. */
+  @media (hover: hover) and (pointer: fine) {
+    .tile-interactive:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 26px 50px -26px hsl(160 22% 18% / 0.42);
+    }
   }
 
   .tile-interactive:active {
@@ -181,8 +235,14 @@
     border: 1px solid hsl(0 0% 100% / 0.34);
   }
 
-  .icon-button-frosted:hover {
-    background-color: hsl(158 24% 90% / 0.68);
+  @media (hover: hover) and (pointer: fine) {
+    .icon-button-frosted:hover {
+      background-color: hsl(158 24% 90% / 0.68);
+    }
+  }
+
+  .icon-button-frosted:active {
+    background-color: hsl(158 24% 90% / 0.78);
   }
 }
 
@@ -225,6 +285,14 @@
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  /* hoverOnlyWhenSupported does not gate group-hover in Tailwind v3, so the
+     arrow nudge and photo zoom would stay applied after a tap. */
+  @media (hover: none) {
+    .group:hover [class*='group-hover:'] {
+      transform: none;
     }
   }
 

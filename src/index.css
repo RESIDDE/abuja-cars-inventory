@@ -1,0 +1,249 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   AbujaCar Inventory — "sage glass" design system.
+
+   The palette lives on :root AND on .theme-sage. The class is also applied to
+   document.body (see useThemeClass) because Radix renders dialogs, selects and
+   toasts into a portal attached to <body>, outside the React tree — a theme
+   class on a wrapper div would never reach them.
+--------------------------------------------------------------------------- */
+
+@layer base {
+  :root,
+  .theme-sage {
+    --background: 162 9% 57%;
+    --foreground: 160 10% 10%;
+
+    --card: 158 16% 79%;
+    --card-foreground: 160 10% 10%;
+
+    --popover: 158 22% 88%;
+    --popover-foreground: 160 10% 10%;
+
+    --primary: 69 100% 66%;
+    --primary-foreground: 69 45% 13%;
+
+    --secondary: 158 13% 73%;
+    --secondary-foreground: 160 10% 15%;
+
+    --muted: 158 13% 74%;
+    --muted-foreground: 160 8% 33%;
+
+    --accent: 158 20% 85%;
+    --accent-foreground: 160 10% 12%;
+
+    --destructive: 4 65% 44%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 158 15% 71%;
+    --input: 158 15% 71%;
+    --ring: 69 100% 60%;
+
+    --radius: 1.25rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply text-foreground;
+    font-family: 'Poppins', ui-sans-serif, system-ui, sans-serif;
+    font-weight: 400;
+    min-height: 100vh;
+    min-height: 100dvh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    /* Two radial gradients over a flat sage base. */
+    background-color: hsl(162 9% 55%);
+    background-image:
+      radial-gradient(120% 80% at 20% 0%, hsl(158 14% 62%), transparent 60%),
+      radial-gradient(100% 70% at 90% 10%, hsl(165 12% 60%), transparent 55%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
+  }
+
+  /* A visible ring everywhere focus lands via the keyboard. */
+  :focus-visible {
+    outline: none;
+    @apply ring-2 ring-ring ring-offset-2;
+    --tw-ring-offset-color: hsl(158 14% 66%);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: hsl(158 12% 68% / 0.4);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(160 12% 48% / 0.55);
+    border-radius: 999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(160 12% 42% / 0.7);
+  }
+}
+
+@layer components {
+  /* ----- The three frosted surfaces ----- */
+
+  .glass-hero {
+    background-image: linear-gradient(
+      135deg,
+      hsl(158 24% 84% / 0.68),
+      hsl(158 16% 76% / 0.46)
+    );
+    -webkit-backdrop-filter: blur(28px);
+    backdrop-filter: blur(28px);
+    border: 1px solid hsl(0 0% 100% / 0.38);
+    box-shadow: 0 24px 60px -24px hsl(160 20% 20% / 0.35);
+  }
+
+  .glass-tile {
+    background-color: hsl(158 20% 82% / 0.42);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsl(0 0% 100% / 0.26);
+  }
+
+  .glass-tile-solid {
+    background-color: hsl(158 22% 85% / 0.72);
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    border: 1px solid hsl(0 0% 100% / 0.3);
+  }
+
+  /* ----- Retuned shadcn surfaces, so portalled UI belongs to the system -----
+     .bg-card and .bg-popover are retuned in the utilities layer further down:
+     Tailwind emits its own .bg-card / .bg-popover utilities after this layer,
+     so an override here would simply lose. ----- */
+
+  /* Radix gives AlertDialog.Content role="alertdialog", not "dialog", so both
+     roles are listed — otherwise a confirmation panel renders with no surface
+     at all. */
+  [role='dialog'],
+  [role='alertdialog'] {
+    background-image: linear-gradient(
+      135deg,
+      hsl(158 26% 88% / 0.86),
+      hsl(158 18% 80% / 0.74)
+    );
+    -webkit-backdrop-filter: blur(26px);
+    backdrop-filter: blur(26px);
+    border: 1px solid hsl(0 0% 100% / 0.42);
+    border-radius: 1.5rem;
+    box-shadow: 0 30px 70px -28px hsl(160 22% 18% / 0.45);
+  }
+
+  /* A soft sage dim. A black overlay would both fight the light page and make
+     the dialog's own backdrop-filter sample near-black, flattening the frost. */
+  [data-overlay='sage'] {
+    background-color: hsl(160 20% 26% / 0.42);
+  }
+
+  /* Tile affordances: a hover lift, no `filter` anywhere near the glass. */
+  .tile-interactive {
+    @apply transition-[transform,box-shadow,background-color] duration-200 ease-out;
+    cursor: pointer;
+  }
+
+  .tile-interactive:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 26px 50px -26px hsl(160 22% 18% / 0.42);
+  }
+
+  .tile-interactive:active {
+    transform: translateY(-1px);
+  }
+
+  .pill-nav-active {
+    background-color: hsl(0 0% 100% / 0.92);
+    box-shadow: 0 8px 20px -10px hsl(160 20% 20% / 0.45);
+  }
+
+  .icon-button-frosted {
+    background-color: hsl(158 22% 86% / 0.5);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid hsl(0 0% 100% / 0.34);
+  }
+
+  .icon-button-frosted:hover {
+    background-color: hsl(158 24% 90% / 0.68);
+  }
+}
+
+@layer utilities {
+  /* Retuned shadcn surfaces. These have to sit in the utilities layer, after
+     Tailwind's generated .bg-card / .bg-popover, to actually take effect — and
+     they are what makes a portalled dialog or dropdown frosted sage rather
+     than a flat opaque panel. */
+  .bg-card {
+    background-color: hsl(158 18% 82% / 0.55);
+    -webkit-backdrop-filter: blur(18px);
+    backdrop-filter: blur(18px);
+  }
+
+  .bg-popover {
+    background-color: hsl(158 24% 88% / 0.82);
+    -webkit-backdrop-filter: blur(22px);
+    backdrop-filter: blur(22px);
+    border-color: hsl(0 0% 100% / 0.4);
+    box-shadow: 0 20px 44px -20px hsl(160 20% 20% / 0.35);
+  }
+
+  .text-display {
+    font-weight: 300;
+    letter-spacing: -0.045em;
+    line-height: 0.92;
+  }
+
+  /* Page enter. Animating `filter` here would create a backdrop root and
+     silently neutralise every backdrop-filter inside the page. */
+  .page-enter {
+    animation: page-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @keyframes page-enter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

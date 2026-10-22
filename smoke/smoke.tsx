@@ -1,0 +1,494 @@
+/* Render the component layer with fixture data to prove nothing throws. */
+import { renderToString } from 'react-dom/server'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+
+import { BelongingsEditor } from '@/components/vehicles/belongings-editor'
+import { BrandMark } from '@/components/common/brand-mark'
+import { CurrencyInput } from '@/components/vehicles/currency-input'
+import { CustodyTile } from '@/components/dashboard/custody-tile'
+import { DashboardHero } from '@/components/dashboard/dashboard-hero'
+import { IntakeChartTile } from '@/components/dashboard/intake-chart-tile'
+import { MovementTimeline } from '@/components/vehicles/movement-timeline'
+import { OwnerCard } from '@/components/owners/owner-card'
+import { RecentVehiclesTile } from '@/components/dashboard/recent-vehicles-tile'
+import { StockGaugeTile } from '@/components/dashboard/stock-gauge-tile'
+import { VehicleCard } from '@/components/vehicles/vehicle-card'
+import { buildInventorySeries, custodyTotals } from '@/lib/analytics'
+import {
+  countBelongings,
+  formatDate,
+  formatNaira,
+  formatNairaCompact,
+  groupDigits,
+  parseCurrency,
+  telHref,
+  toDateInputValue,
+  toDateTimeInputValue,
+  vehicleTitle,
+} from '@/lib/format'
+import { normalizeBelongings, normalizeVehicle } from '@/lib/normalize'
+import { parseModelJson } from '@/lib/model-json'
+import { formatBytes, MAX_UPLOAD_BYTES, validatePhotoFile } from '@/lib/image'
+import { normalizePhotos } from '@/lib/normalize'
+import { findOwnersByPhone, phoneKey } from '@/lib/phone'
+import { OwnerMatchHint } from '@/components/owners/owner-match-hint'
+import { planVinApply } from '@/lib/apply-vin-read'
+import {
+  bodyTypeFromBodyClass,
+  checkVin,
+  makeFromWmi,
+  normalizeVin,
+  vinCheckDigit,
+} from '@/lib/vin'
+import { describeAuthError, describeDbError } from '@/lib/errors'
+import type { Owner, VehicleEvent, VehicleWithOwner } from '@/types/database'
+import type { VinReadResult } from '@/types/vin'
+
+const owner: Owner = {
+  id: 'o1',
+  full_name: 'Amaka Okonkwo',
+  phone_primary: '0803 111 2222',
+  phone_secondary: '0701 555 4444',
+  email: 'amaka@example.com',
+  address: '14 Aminu Kano Crescent, Wuse II, Abuja',
+  notes: 'Prefers a call before release.',
+  created_at: '2026-09-01T09:00:00Z',
+  updated_at: '2026-09-01T09:00:00Z',
+}
+
+const today = toDateInputValue(new Date())
+
+const vehicles: VehicleWithOwner[] = [
+  {
+    id: 'v1',
+    owner_id: 'o1',
+    make: 'Toyota',
+    model: 'Corolla',
+    body_type: 'Sedan',
+    year: 2016,
+    vin: 'JTDBR32E030123456',
+    color: 'Silver',
+    plate_number: 'ABC 123 XY',
+    keys_count: 2,
+    belongings: [
+      { item: 'Spare tyre', qty: 1, note: 'Worn' },
+      { item: 'Jack', qty: 1, note: null },
+    ],
+    photos: [{ path: 'v1/1-0.webp', bytes: 310_000, width: 1800, height: 1200 }],
+    price: 12_500_000,
+    status: 'in_stock',
+    intake_date: today,
+    released_date: null,
+    notes: 'Dent on rear bumper.',
+    created_at: '2026-10-20T10:00:00Z',
+    updated_at: '2026-10-20T10:00:00Z',
+    owner,
+  },
+  {
+    id: 'v2',
+    owner_id: 'o1',
+    make: 'Lexus',
+    model: 'RX 350',
+    body_type: 'SUV',
+    year: null,
+    vin: null,
+    color: null,
+    plate_number: null,
+    keys_count: 0,
+    belongings: [],
+    photos: [],
+    price: null,
+    status: 'released',
+    intake_date: '2026-10-01',
+    released_date: '2026-10-15',
+    notes: null,
+    created_at: '2026-10-01T10:00:00Z',
+    updated_at: '2026-10-15T10:00:00Z',
+    owner: null,
+  },
+]
+
+const events: VehicleEvent[] = [
+  {
+    id: 'e2',
+    vehicle_id: 'v1',
+    event_type: 'released',
+    occurred_at: '2026-10-21T14:30:00Z',
+    staff_name: 'Bayo',
+    recipient_name: 'Amaka Okonkwo',
+    notes: 'Collected at the gate.',
+    created_by: null,
+    created_at: '2026-10-21T14:30:00Z',
+  },
+  {
+    id: 'e1',
+    vehicle_id: 'v1',
+    event_type: 'checked_in',
+    occurred_at: '2026-10-20T09:00:00Z',
+    staff_name: null,
+    recipient_name: null,
+    notes: null,
+    created_by: null,
+    created_at: '2026-10-20T09:00:00Z',
+  },
+]
+
+const EMPTY_FORM = { vin: '', make: '', model: '', year: '', bodyType: '' }
+const goodRead: VinReadResult = {
+  vin: 'JTDKB20U793094567',
+  readable: true,
+  checkDigitOk: true,
+  confidence: 'high',
+  uncertain: [],
+  notes: null,
+  make: 'Toyota',
+  model: 'Prius',
+  year: '2009',
+  bodyClass: 'Hatchback/Liftback/Notchback',
+  source: 'nhtsa',
+}
+
+const series = buildInventorySeries(vehicles, 30)
+const totals = custodyTotals(vehicles.filter((v) => v.status === 'in_stock'))
+const noop = () => {}
+
+const tree = (
+  <QueryClientProvider client={new QueryClient()}>
+    <MemoryRouter>
+      <DashboardHero
+        email="staff@abujacar.ng"
+        totalCount={vehicles.length}
+        inStockCount={1}
+        releasedCount={1}
+        ownerCount={1}
+        series={series}
+        onCheckIn={noop}
+      />
+      <RecentVehiclesTile vehicles={vehicles} />
+      <StockGaugeTile rate={0.5} inStockCount={1} totalCount={2} />
+      <IntakeChartTile series={series} total={1} />
+      <CustodyTile totals={totals} inStockCount={1} />
+      {vehicles.map((vehicle) => (
+        <VehicleCard
+          key={vehicle.id}
+          vehicle={vehicle}
+          onMove={noop}
+          onHistory={noop}
+          onEdit={noop}
+          onDelete={noop}
+        />
+      ))}
+      <OwnerCard owner={owner} vehicleCount={2} onEdit={noop} onDelete={noop} />
+      <MovementTimeline events={events} />
+      <MovementTimeline events={[]} />
+      <BelongingsEditor value={vehicles[0].belongings} onChange={noop} />
+      <CurrencyInput value={9_500_000} onChange={noop} />
+      <BrandMark />
+      <OwnerMatchHint matches={[owner]} onUse={noop} />
+    </MemoryRouter>
+  </QueryClientProvider>
+)
+
+const html = renderToString(tree)
+
+const checks: [string, boolean][] = [
+  ['hero renders the total', html.includes('All Vehicles')],
+  ['greeting present', html.includes('Explore your inventory history')],
+  ['vehicle title', html.includes('2016 Toyota Corolla')],
+  ['vin shown', html.includes('JTDBR32E030123456')],
+  ['naira formatting', html.includes('12,500,000')],
+  ['status badge', html.includes('In Stock') && html.includes('Released')],
+  ['owner tel link', html.includes('tel:08031112222')],
+  ['owner mailto', html.includes('mailto:amaka@example.com')],
+  ['timeline recipient label', html.includes('Released to')],
+  ['empty timeline copy', html.includes('No movements recorded yet.')],
+  ['belongings chip', html.includes('Wheel spanner')],
+  ['gauge percentage', html.includes('50%')],
+  ['brand mark points at the logo', html.includes('/abujacar-logo.png')],
+  ['owner match hint names the owner', html.includes('That number is already on record')],
+  ['owner match hint offers the switch', html.includes('Use this owner')],
+  ['brand mark is decorative for screen readers', html.includes('aria-hidden="true"')],
+]
+
+// Pure-function spot checks, including the edge cases that bite in the yard.
+const units: [string, unknown, unknown][] = [
+  ['groupDigits strips junk', groupDigits('a1b2c3,4'), '1,234'],
+  ['groupDigits leading zeros', groupDigits('000450'), '450'],
+  ['groupDigits empty', groupDigits('abc'), ''],
+  ['parseCurrency', parseCurrency('12,500,000'), 12500000],
+  ['parseCurrency empty', parseCurrency(''), null],
+  ['formatNaira null', formatNaira(null), '—'],
+  ['formatNairaCompact millions', formatNairaCompact(12_500_000), '₦12.5M'],
+  ['formatNairaCompact zero', formatNairaCompact(0, '₦0'), '₦0'],
+  ['formatDate no drift', formatDate('2026-03-01'), '1 Mar 2026'],
+  ['formatDate null', formatDate(null), '—'],
+  ['countBelongings', countBelongings(vehicles[0].belongings), 2],
+  ['countBelongings junk', countBelongings(null), 0],
+  ['vehicleTitle without year', vehicleTitle(vehicles[1]), 'Lexus RX 350'],
+  ['telHref', telHref('+234 (803) 111-2222'), 'tel:+2348031112222'],
+  [
+    'normalizeBelongings drops rubbish',
+    JSON.stringify(normalizeBelongings(['x', { item: '  ' }, { item: 'Jack', qty: '2' }])),
+    JSON.stringify([{ item: 'Jack', qty: 2, note: null }]),
+  ],
+  [
+    'normalizeBelongings parses a json string',
+    normalizeBelongings('[{"item":"Mats","qty":4}]').length,
+    1,
+  ],
+  [
+    'normalizeVehicle coerces a numeric string price and array owner',
+    normalizeVehicle({ ...vehicles[0], price: '900000.00', owner: [owner] } as never).price,
+    900000,
+  ],
+  [
+    'vin clash message',
+    describeDbError({ code: '23505', message: 'duplicate key value violates unique constraint "vi_vehicles_vin_unique_idx"', details: 'Key (upper(vin))=(ABC) already exists.' }),
+    'A vehicle with that VIN is already on record',
+  ],
+  [
+    'missing vehicle message',
+    describeDbError({ code: 'P0002', message: 'Vehicle x not found' }),
+    'That vehicle could not be found. It may have been deleted.',
+  ],
+  [
+    'auth message',
+    describeAuthError({ message: 'Invalid login credentials' }),
+    'That email and password do not match an account.',
+  ],
+  ['toDateInputValue shape', /^\d{4}-\d{2}-\d{2}$/.test(toDateInputValue(new Date())), true],
+  [
+    'toDateTimeInputValue shape',
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(toDateTimeInputValue(new Date())),
+    true,
+  ],
+  ['series length', series.length, 30],
+  ['series ends today', series[29].date, today],
+  ['held on the last day', series[29].held, 1],
+  ['checked in today', series[29].checkedIn, 1],
+  ['custody keys', totals.keys, 2],
+  ['custody belongings', totals.belongings, 2],
+  ['custody stock value', totals.stockValue, 12500000],
+
+  // --- VIN validation -------------------------------------------------------
+  // The canonical check-digit test vector.
+  ['canonical VIN passes', checkVin('1HGBH41JXMN109186').checkDigitOk, true],
+  ['canonical VIN well formed', checkVin('1HGBH41JXMN109186').wellFormed, true],
+  ['check digit computed', vinCheckDigit('1HGBH41JXMN109186'), 'X'],
+  // A single transposed character is caught.
+  ['B->8 typo is caught', checkVin('1HG8H41JXMN109186').checkDigitOk, false],
+  ['I/O/Q rejected', checkVin('1HGBH41JXMN1O9186').wellFormed, false],
+  [
+    'I/O/Q message',
+    checkVin('1HGBH41JXMN1O9186').problem,
+    'A VIN never contains the letters I, O or Q',
+  ],
+  ['short VIN rejected', checkVin('1HGBH41JX').wellFormed, false],
+  ['empty VIN is not an error', checkVin('').problem, null],
+  ['normalizeVin strips separators', normalizeVin(' jtd-kb20u 793094567 '), 'JTDKB20U793094567'],
+
+  // Real misreads captured from vision models during model selection.
+  // Gemini Flash returned 18 characters, Flash-Lite 19 — both rejected on length.
+  ['gemini-flash 18-char misread rejected', checkVin('JTDKP2000093094567').wellFormed, false],
+  ['gemini-lite 19-char misread rejected', checkVin('JTDKB20000093094567').wellFormed, false],
+  // Qwen-30b's U->D slip passes the check digit (both transliterate to 4),
+  // which is exactly why a read is shown for confirmation, never applied blind.
+  ['U->D slip slips past the check digit', checkVin('JTDKB20D793094567').checkDigitOk, true],
+  ['correct read passes', checkVin('JTDKB20U793094567').checkDigitOk, true],
+
+  // --- WMI fallback and body class mapping ---------------------------------
+  ['WMI 1HG -> Honda', makeFromWmi('1HGBH41JXMN109186'), 'Honda'],
+  ['WMI JTD -> Toyota', makeFromWmi('JTDKB20U793094567'), 'Toyota'],
+  ['WMI WBA -> BMW', makeFromWmi('WBA3A5C50DF123456'), 'BMW'],
+  ['WMI unknown -> null', makeFromWmi('ZZZ3A5C50DF123456'), null],
+  ['body class sedan', bodyTypeFromBodyClass('Sedan/Saloon'), 'Sedan'],
+  ['body class hatchback', bodyTypeFromBodyClass('Hatchback/Liftback/Notchback'), 'Hatchback'],
+  [
+    'body class SUV',
+    bodyTypeFromBodyClass('Sport Utility Vehicle (SUV)/Multi-Purpose Vehicle (MPV)'),
+    'SUV',
+  ],
+  ['body class null', bodyTypeFromBodyClass(null), null],
+
+  // --- Model reply parsing --------------------------------------------------
+  // Verbatim replies captured from each model during selection.
+  [
+    'gemini wraps JSON in code fences',
+    String(parseModelJson('```json\n{ "vin": "1HGBH41JXMN109186", "make": "Honda" }\n```')?.vin),
+    '1HGBH41JXMN109186',
+  ],
+  [
+    'qwen returns bare JSON',
+    String(parseModelJson('{ "vin": "JTDKB20U793094567", "make": "Toyota" }')?.vin),
+    'JTDKB20U793094567',
+  ],
+  [
+    'haiku returns an explicit null VIN',
+    parseModelJson('{"vin": null, "make": "Toyota", "confidence": "low"}')?.vin,
+    null,
+  ],
+  [
+    'prose around the JSON still parses',
+    String(parseModelJson('Here you go:\n{"vin":"1HGBH41JXMN109186"}\nHope that helps')?.vin),
+    '1HGBH41JXMN109186',
+  ],
+  ['unparseable reply returns null', parseModelJson('I cannot read this plate.'), null],
+
+  // --- Applying a reading to the form --------------------------------------
+  // The photo wins: existing values are overwritten, not preserved.
+  [
+    'overwrites a contradicting make',
+    planVinApply(
+      { vin: '', make: 'Honda', model: '', year: '', bodyType: '' },
+      goodRead,
+    ).updates.make,
+    'Toyota',
+  ],
+  [
+    'reports what it replaced',
+    planVinApply(
+      { vin: 'WBA3A5C50DF123456', make: 'BMW', model: '328i', year: '2013', bodyType: 'Sedan' },
+      goodRead,
+    ).replaced.join('|'),
+    'VIN|make|model|year|body type',
+  ],
+  [
+    'nothing counted as newly filled when all were occupied',
+    planVinApply(
+      { vin: 'WBA3A5C50DF123456', make: 'BMW', model: '328i', year: '2013', bodyType: 'Sedan' },
+      goodRead,
+    ).filled.length,
+    0,
+  ],
+  [
+    'fills an empty form and calls them filled, not replaced',
+    planVinApply(EMPTY_FORM, goodRead).filled.join('|'),
+    'VIN|make|model|year|body type',
+  ],
+  [
+    'maps body class onto the select value',
+    planVinApply(EMPTY_FORM, goodRead).updates.bodyType,
+    'Hatchback',
+  ],
+  [
+    'no change when the photo agrees, case-insensitively',
+    Object.keys(
+      planVinApply(
+        { vin: 'jtdkb20u793094567', make: 'toyota', model: 'Prius', year: '2009', bodyType: 'Hatchback' },
+        goodRead,
+      ).updates,
+    ).length,
+    0,
+  ],
+  [
+    'a field the decoder knows nothing about is left alone',
+    planVinApply(
+      { vin: '', make: '', model: 'Camry', year: '', bodyType: '' },
+      { ...goodRead, model: null, bodyClass: null },
+    ).updates.model,
+    undefined,
+  ],
+  // --- Photo handling -------------------------------------------------------
+  ['formatBytes MB', formatBytes(4_404_019), '4.2 MB'],
+  ['formatBytes KB', formatBytes(310_000), '303 KB'],
+  ['formatBytes bytes', formatBytes(512), '512 B'],
+  ['5 MB limit matches the bucket', MAX_UPLOAD_BYTES, 5_242_880],
+  [
+    'oversize file rejected with its size',
+    validatePhotoFile({ type: 'image/jpeg', size: 6_000_000, name: 'big.jpg' }),
+    'big.jpg is 5.7 MB — the limit is 5.0 MB.',
+  ],
+  [
+    'file exactly at the limit is allowed',
+    validatePhotoFile({ type: 'image/jpeg', size: MAX_UPLOAD_BYTES, name: 'edge.jpg' }),
+    null,
+  ],
+  [
+    'non-image rejected',
+    validatePhotoFile({ type: 'application/pdf', size: 1000, name: 'doc.pdf' }),
+    'doc.pdf is not an image.',
+  ],
+  [
+    'empty file rejected',
+    validatePhotoFile({ type: 'image/png', size: 0, name: 'blank.png' }),
+    'blank.png is empty.',
+  ],
+  ['ordinary photo accepted', validatePhotoFile({ type: 'image/heic', size: 2_000_000, name: 'a.heic' }), null],
+  [
+    'normalizePhotos drops rubbish rows',
+    JSON.stringify(normalizePhotos(['x', { bytes: 1 }, { path: 'a.webp', bytes: '42' }])),
+    JSON.stringify([{ path: 'a.webp', bytes: 42, width: 0, height: 0 }]),
+  ],
+  ['normalizePhotos on null', normalizePhotos(null).length, 0],
+  [
+    'vehicle normalizer keeps photos',
+    normalizeVehicle({ ...vehicles[0], photos: [{ path: 'p.webp', bytes: 10, width: 1, height: 1 }] } as never)
+      .photos[0].path,
+    'p.webp',
+  ],
+
+  // --- Matching an owner by phone number ------------------------------------
+  // The same line, typed the ways people actually type it.
+  ['spaced national form', phoneKey('0803 111 2222'), '8031112222'],
+  ['plain national form', phoneKey('08031112222'), '8031112222'],
+  ['international with +234', phoneKey('+234 803 111 2222'), '8031112222'],
+  ['international, dashes, no plus', phoneKey('234-803-111-2222'), '8031112222'],
+  ['bare subscriber number', phoneKey('8031112222'), '8031112222'],
+  ['parenthesised', phoneKey('(0803) 111-2222'), '8031112222'],
+  ['too short to guess from', phoneKey('0803'), ''],
+  ['empty', phoneKey(''), ''],
+  ['null', phoneKey(null), ''],
+
+  [
+    'finds the owner by their first number, typed differently',
+    findOwnersByPhone([owner], '+2348031112222')[0]?.full_name,
+    'Amaka Okonkwo',
+  ],
+  [
+    'finds the owner by their second number',
+    findOwnersByPhone([owner], '07015554444')[0]?.full_name,
+    'Amaka Okonkwo',
+  ],
+  ['a different number matches nobody', findOwnersByPhone([owner], '08099998888').length, 0],
+  [
+    'an owner being edited never matches itself',
+    findOwnersByPhone([owner], '0803 111 2222', owner.id).length,
+    0,
+  ],
+  ['a half-typed number suggests nothing', findOwnersByPhone([owner], '080').length, 0],
+
+  [
+    'an unreadable photo changes nothing',
+    Object.keys(
+      planVinApply(
+        { vin: '', make: 'Honda', model: '', year: '', bodyType: '' },
+        { vin: null, readable: false, confidence: 'low', notes: null },
+      ).updates,
+    ).length,
+    0,
+  ],
+]
+
+let failed = 0
+
+for (const [name, ok] of checks) {
+  if (!ok) {
+    failed += 1
+    console.log(`FAIL  render: ${name}`)
+  }
+}
+
+for (const [name, actual, expected] of units) {
+  if (actual !== expected) {
+    failed += 1
+    console.log(`FAIL  ${name}: got ${JSON.stringify(actual)}, want ${JSON.stringify(expected)}`)
+  }
+}
+
+console.log(
+  failed === 0
+    ? `OK  ${checks.length} render checks and ${units.length} unit checks passed (${html.length} bytes of HTML)`
+    : `${failed} check(s) failed`,
+)
+process.exit(failed === 0 ? 0 : 1)

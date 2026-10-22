@@ -15,12 +15,10 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDashboardData } from '@/hooks/use-dashboard-data'
-import { useAuth } from '@/context/auth-context'
 import { formatDate, formatNaira, vehicleTitle } from '@/lib/format'
 import type { VehicleWithOwner } from '@/types/database'
 
 export default function DashboardPage() {
-  const { user } = useAuth()
   const navigate = useNavigate()
   const [formOpen, setFormOpen] = React.useState(false)
 
@@ -66,7 +64,6 @@ export default function DashboardPage() {
   return (
     <div className="page-enter space-y-6">
       <DashboardHero
-        email={user?.email ?? ''}
         totalCount={totalCount}
         inStockCount={inStock.length}
         releasedCount={released.length}

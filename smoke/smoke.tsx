@@ -159,7 +159,6 @@ const tree = (
   <QueryClientProvider client={new QueryClient()}>
     <MemoryRouter>
       <DashboardHero
-        email="staff@abujacar.ng"
         totalCount={vehicles.length}
         inStockCount={1}
         releasedCount={1}
@@ -197,6 +196,9 @@ const html = renderToString(tree)
 const checks: [string, boolean][] = [
   ['hero renders the total', html.includes('All Vehicles')],
   ['greeting present', html.includes('Explore your inventory history')],
+  // Identity lives in the nav account menu; repeating it in the hero was noise.
+  ['hero does not repeat the signed-in email', !html.includes('staff@abujacar.ng')],
+  ['check-in button is labelled for icon-only mode', html.includes('aria-label="Check in vehicle"')],
   ['vehicle title', html.includes('2016 Toyota Corolla')],
   ['vin shown', html.includes('JTDBR32E030123456')],
   ['naira formatting', html.includes('12,500,000')],

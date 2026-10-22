@@ -4,11 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { InventoryChart } from '@/components/dashboard/inventory-chart'
 import { Button } from '@/components/ui/button'
 import { CHART_DAYS } from '@/lib/constants'
-import { initialsOf } from '@/lib/format'
 import type { InventoryDay } from '@/lib/analytics'
 
 interface DashboardHeroProps {
-  email: string
   totalCount: number
   inStockCount: number
   releasedCount: number
@@ -18,7 +16,6 @@ interface DashboardHeroProps {
 }
 
 export function DashboardHero({
-  email,
   totalCount,
   inStockCount,
   releasedCount,
@@ -51,27 +48,25 @@ export function DashboardHero({
 
   return (
     <section className="glass-hero rounded-[2rem] p-5 sm:p-8">
-      {/* Top row: who you are and what you can do, against the greeting. */}
+      {/* Top row: the actions, against the greeting. Identity is not repeated
+          here — the account menu in the nav already carries it. */}
       <div className="flex flex-wrap items-start justify-between gap-5">
         <div className="flex flex-wrap items-center gap-2.5">
-          <span className="flex items-center gap-2.5 rounded-full border border-white/45 bg-white/45 py-1.5 pl-1.5 pr-4">
-            <span className="grid size-8 place-items-center rounded-full bg-[hsl(160_14%_30%)] text-[0.7rem] font-semibold uppercase text-white">
-              {initialsOf(email || 'AbujaCar')}
-            </span>
-            <span className="max-w-[9rem] truncate text-xs font-medium sm:max-w-[14rem]">
-              {email || 'Staff'}
-            </span>
-          </span>
-
-          <Button onClick={onCheckIn} className="h-10">
-            <Plus /> Check in vehicle
+          {/* Icon-only on a phone, where the label would crowd the row. */}
+          <Button
+            onClick={onCheckIn}
+            aria-label="Check in vehicle"
+            className="size-11 shrink-0 p-0 sm:h-10 sm:w-auto sm:px-5"
+          >
+            <Plus />
+            <span className="hidden sm:inline">Check in vehicle</span>
           </Button>
 
           <button
             type="button"
             onClick={() => navigate('/vehicles')}
             aria-label="Search the inventory"
-            className="icon-button-frosted grid size-10 place-items-center rounded-full text-foreground/80 transition-colors hover:text-foreground"
+            className="icon-button-frosted grid size-11 shrink-0 place-items-center rounded-full text-foreground/80 transition-colors hover:text-foreground sm:size-10"
           >
             <Search className="size-4" />
           </button>

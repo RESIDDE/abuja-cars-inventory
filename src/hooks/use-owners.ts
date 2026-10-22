@@ -90,8 +90,9 @@ export function useUpdateOwner() {
         .update(cleanOwnerInput(input))
         .eq('id', id)
         .select('*')
-        .single()
+        .maybeSingle()
       if (error) throw error
+      if (!data) throw new Error('That owner no longer exists. It may have been deleted.')
       return data as Owner
     },
     onSuccess: () => {

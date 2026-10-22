@@ -244,11 +244,11 @@ export function useUpdateVehicle() {
         })
         .eq('id', id)
         .select(SELECT_WITH_OWNER)
-        .single()
+        .maybeSingle()
 
-      if (error) {
+      if (error || !data) {
         await discardVehiclePhotos(uploaded.map((photo) => photo.path))
-        throw error
+        throw error ?? new Error('That vehicle no longer exists. It may have been deleted.')
       }
 
       // Only once the row no longer references them.

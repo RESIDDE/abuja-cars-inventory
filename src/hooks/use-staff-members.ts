@@ -83,11 +83,14 @@ export function useUpdateStaffMember() {
         .update(clean(input))
         .eq('id', id)
         .select('*')
-        .single()
+        .maybeSingle()
       if (error) throw error
+      if (!data) throw new Error('That staff member no longer exists. It may have been deleted.')
       return data as StaffMember
     },
-    onSuccess: () => void queryClient.invalidateQueries({ queryKey: staffKeys.members }),
+    // onSettled, not onSuccess: a failure usually means the row went away, and
+    // the stale list on screen is exactly what misled the user into editing it.
+    onSettled: () => void queryClient.invalidateQueries({ queryKey: staffKeys.members }),
   })
 }
 

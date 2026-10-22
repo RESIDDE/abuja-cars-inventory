@@ -256,6 +256,23 @@ const units: [string, unknown, unknown][] = [
     describeDbError({ code: 'P0002', message: 'Vehicle x not found' }),
     'That vehicle could not be found. It may have been deleted.',
   ],
+  // The exact PostgREST failure seen when saving an edit to a deleted row.
+  [
+    'PGRST116 by code',
+    describeDbError({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' }),
+    'That record no longer exists — someone may have deleted it. The list has been refreshed.',
+  ],
+  [
+    'PGRST116 by message, as the UI received it',
+    describeDbError({ message: 'Cannot coerce the result to a single JSON object' }),
+    'That record no longer exists — someone may have deleted it. The list has been refreshed.',
+  ],
+  [
+    'our own vanished-row error passes through intact',
+    describeDbError(new Error('That staff member no longer exists. It may have been deleted.')),
+    'That staff member no longer exists. It may have been deleted.',
+  ],
+
   [
     'auth message',
     describeAuthError({ message: 'Invalid login credentials' }),

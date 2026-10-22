@@ -36,6 +36,12 @@ export function describeDbError(error: unknown, fallback = 'Something went wrong
     return 'Some of those values are out of range. Check keys and status.'
   }
 
+  // PostgREST returns this when .single() matched no row — almost always
+  // because the record was deleted by someone else while this screen was open.
+  if (err.code === 'PGRST116' || /coerce the result to a single json object/i.test(message)) {
+    return 'That record no longer exists — someone may have deleted it. The list has been refreshed.'
+  }
+
   if (err.code === 'P0002' || /not found/i.test(message)) {
     return 'That vehicle could not be found. It may have been deleted.'
   }

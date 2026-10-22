@@ -107,6 +107,13 @@ export default function SettingsPage() {
       resetForm()
     } catch (error) {
       const message = describeDbError(error)
+      if (message.includes('no longer exists')) {
+        // Nothing left to edit — go back to adding, rather than stranding the
+        // form pointed at a record that is gone.
+        resetForm()
+        toast.error(message)
+        return
+      }
       toast.error(
         message.includes('already exists') ? 'Someone with that name is already listed.' : message,
       )

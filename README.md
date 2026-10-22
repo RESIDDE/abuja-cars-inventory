@@ -42,6 +42,55 @@ both returning to `/dashboard`. Set your site URL and that redirect under
 **Authentication → URL Configuration** in the Supabase dashboard, or the
 emailed links will bounce.
 
+## Deploying
+
+The app is a static bundle plus a Supabase project. [vercel.json](vercel.json)
+handles the two things a Vite SPA needs on Vercel:
+
+- **A rewrite to `index.html`.** Routing is client-side, so without it
+  `/dashboard` and `/vehicles/:id` return 404 on a refresh or a shared link.
+  Vercel checks the filesystem before applying rewrites, so `/assets/*` is
+  unaffected.
+- **Cache headers.** Asset filenames carry a content hash and are cached for a
+  year; `index.html` is never cached, or a deploy would keep serving the old
+  asset names.
+
+### Environment variables
+
+Set these in the host's dashboard, not in a file — `.env` is gitignored and
+never reaches the build:
+
+```
+VITE_SUPABASE_URL       https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY  <anon key>
+```
+
+`VITE_*` variables are read **at build time**, so changing them requires a
+redeploy; editing them alone does nothing to the running site. If the deployed
+app shows the "Connect your Supabase project" screen, these are missing — the
+bundle will contain `localhost:54321` instead of the project URL, which is worth
+checking directly before assuming anything else is wrong.
+
+**Do not set `VITE_OPENROUTER_API_KEY` on the host.** It is a development
+convenience only, gated behind `import.meta.env.DEV`; in production VIN reading
+goes through the `decode-vin` edge function, which holds the key server-side.
+
+### Auth redirect URLs
+
+Supabase must know the deployed origin or every confirmation, reset and magic
+link will send people to localhost. Under **Authentication → URL Configuration**,
+or in `supabase/config.toml` followed by `supabase config push`:
+
+```toml
+site_url = "https://<your-domain>"
+additional_redirect_urls = ["https://<your-domain>/**", "http://localhost:5173/**"]
+```
+
+Vercel preview deployments get their own generated hostnames, which will not
+match. Either test auth on the production domain, or add a specific preview URL
+— not a `*.vercel.app` wildcard, which would let any site on that domain
+receive your auth redirects.
+
 ## Scripts
 
 | Script              | What it does                                              |

@@ -271,12 +271,25 @@ The AbujaCar badge lives in [public/](public/) and is served at a stable path, s
 
 | File | Used for |
 | --- | --- |
-| `abujacar-logo.png` (400px) | the mark in the top nav and on the sign-in screen |
+| `abujacar-logo.png` (400px) | the circular badge in the top nav and on the sign-in screen |
+| `abujacar-wordmark.png` | the "ABUJACAR" wordmark beside the badge in the nav |
+| `abujacar-wordmark-light.png` | the same wordmark unaltered, for a dark background |
 | `favicon-32.png`, `favicon-16.png` | browser tab |
 | `apple-touch-icon.png` (180px) | iOS home screen |
 | `icon-192.png` | spare, for a web manifest if one is added |
 
-All of them are generated from the same 400px artwork, never upscaled. The badge
+The supplied wordmark sets "ABUJA" in white, which is invisible against this
+app's light sage surfaces — only "CAR" would have read. Rather than filter it in
+CSS, `abujacar-wordmark.png` is a recoloured copy: the white glyphs are redrawn
+in the foreground ink, the red is untouched, and the alpha channel is preserved
+so the antialiasing survives. The original is kept as `-light.png` for anywhere
+dark. Both are cropped to the ink, so their height alone controls their size.
+
+In the nav the wordmark is decorative, and the link takes its accessible name
+from an `sr-only` span — the wordmark is hidden below `md`, where the badge
+alone carries the brand, and the name has to hold at every width.
+
+All icons are generated from the same 400px artwork, never upscaled. The badge
 is already circular on a black field with a white ring just inside the edge, so
 `BrandMark` crops it to a circle — that lands on the ring and trims only the
 black corners. It is marked decorative, because the word "AbujaCar" sits beside

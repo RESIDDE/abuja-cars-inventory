@@ -33,7 +33,15 @@ export function TopNav() {
           className="flex shrink-0 items-center gap-2.5 rounded-full pr-2 focus-visible:outline-none"
         >
           <BrandMark />
-          <span className="text-base font-semibold tracking-tight">AbujaCar</span>
+          {/* The wordmark is decorative here: the link's name comes from the
+              sr-only text, which stays put at every width. */}
+          <img
+            src="/abujacar-wordmark.png"
+            alt=""
+            aria-hidden="true"
+            className="hidden h-[18px] w-auto md:block"
+          />
+          <span className="sr-only">AbujaCar</span>
         </Link>
 
         <nav className="no-scrollbar mx-auto flex items-center gap-1 overflow-x-auto rounded-full border border-white/30 bg-white/25 p-1">

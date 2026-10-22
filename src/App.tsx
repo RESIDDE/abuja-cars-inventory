@@ -17,6 +17,7 @@ const DashboardPage = lazy(() => import('@/pages/dashboard'))
 const VehiclesPage = lazy(() => import('@/pages/vehicles'))
 const VehicleDetailPage = lazy(() => import('@/pages/vehicle-detail'))
 const OwnersPage = lazy(() => import('@/pages/owners'))
+const SettingsPage = lazy(() => import('@/pages/settings'))
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -48,6 +49,7 @@ export default function App() {
                   <Route path="/vehicles" element={<VehiclesPage />} />
                   <Route path="/vehicles/:id" element={<VehicleDetailPage />} />
                   <Route path="/owners" element={<OwnersPage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
                 </Route>
               </Route>
 

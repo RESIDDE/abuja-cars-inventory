@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Loader2 } from 'lucide-react'
-import { useForm } from 'react-hook-form'
+import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
 
@@ -18,7 +18,15 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { useStaffMembers } from '@/hooks/use-staff-members'
 import { useRecordMovement, useVehicleEvents } from '@/hooks/use-vehicle-events'
 import { describeDbError } from '@/lib/errors'
 import { formatDate, toDateTimeInputValue, vehicleTitle } from '@/lib/format'
@@ -32,6 +40,9 @@ const schema = z.object({
 })
 
 type FormValues = z.infer<typeof schema>
+
+/** Sentinel for the "not on the list" option; never stored. */
+const OTHER = '__other__'
 
 interface MovementDialogProps {
   open: boolean
@@ -59,6 +70,15 @@ export function MovementDialog({
 
   const [keys, setKeys] = React.useState(0)
 
+  // Names come from Settings. "Someone else" stays available so a one-off
+  // cover shift is never a reason to leave the field blank.
+  const { data: staffMembers = [] } = useStaffMembers()
+  const activeStaff = React.useMemo(
+    () => staffMembers.filter((member) => member.active),
+    [staffMembers],
+  )
+  const [staffOther, setStaffOther] = React.useState(false)
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -80,6 +100,7 @@ export function MovementDialog({
     // Releasing normally hands over everything the yard holds; checking back in
     // normally returns however many went out.
     setKeys(releasing ? heldKeys : (lastRelease?.keys_count ?? heldKeys))
+    setStaffOther(false)
   }, [open, form, releasing, heldKeys, lastRelease])
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -154,8 +175,64 @@ export function MovementDialog({
             ) : null}
           </div>
 
-          <Field label="Staff name" htmlFor="staffName" hint="Optional — who handled it">
-            <Input id="staffName" {...form.register('staffName')} />
+          <Field
+            label="Handled by"
+            htmlFor="staffName"
+            hint={
+              activeStaff.length === 0
+                ? 'Optional — add staff in Settings to pick from a list'
+                : 'Optional'
+            }
+          >
+            {activeStaff.length > 0 && !staffOther ? (
+              <Controller
+                control={form.control}
+                name="staffName"
+                render={({ field }) => (
+                  <Select
+                    value={field.value || undefined}
+                    onValueChange={(value) => {
+                      if (value === OTHER) {
+                        setStaffOther(true)
+                        field.onChange('')
+                      } else {
+                        field.onChange(value)
+                      }
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose who handled it" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {activeStaff.map((member) => (
+                        <SelectItem key={member.id} value={member.name}>
+                          {member.name}
+                          {member.role ? ` — ${member.role}` : ''}
+                        </SelectItem>
+                      ))}
+                      <SelectItem value={OTHER}>Someone else…</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input id="staffName" placeholder="Type a name" {...form.register('staffName')} />
+                {activeStaff.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setStaffOther(false)
+                      form.setValue('staffName', '')
+                    }}
+                  >
+                    Pick from list
+                  </Button>
+                ) : null}
+              </div>
+            )}
           </Field>
 
           <Field

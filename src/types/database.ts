@@ -16,6 +16,24 @@ export interface VehiclePhoto {
   height: number
 }
 
+/** Someone who handles vehicles. Not necessarily someone who can sign in. */
+export interface StaffMember {
+  id: string
+  name: string
+  role: string | null
+  phone: string | null
+  active: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** A row of the login allowlist — these do have an auth account. */
+export interface StaffAccount {
+  user_id: string
+  full_name: string | null
+  added_at: string
+}
+
 export interface Owner {
   id: string
   full_name: string

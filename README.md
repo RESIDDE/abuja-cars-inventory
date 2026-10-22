@@ -68,6 +68,34 @@ its filters from the URL (`?status=in_stock|released`, `?owner=<id>`), so
 dashboard tiles can deep-link into a filtered view and it survives a refresh.
 `?new=1` opens the check-in form.
 
+## Settings, and who counts as staff
+
+Reached from the profile menu in the nav. Two lists live there, and they are
+deliberately not the same thing:
+
+| | What it is | Managed where |
+| --- | --- | --- |
+| `vi_staff_members` | People who **handle vehicles**. Fills the "Handled by" dropdown on a movement. No login required. | Settings page |
+| `vi_staff` | Accounts that **can sign in**. Every row points at an `auth.users` record. | SQL only |
+
+A yard hand who hands a car back may never sign in to anything, so needing an
+account to be named on a movement would be wrong. Equally, the app cannot grant
+itself access — the login allowlist is shown on the Settings page read-only.
+
+Staff who leave are marked as left rather than deleted: movements they handled
+keep their name, and the name drops out of the dropdown. Deleting is offered,
+but the confirmation points at the better option.
+
+Names are unique on `lower(regexp_replace(btrim(name), '\s+', ' ', 'g'))`, so
+`"Bayo  Adeyemi"`, `"bayo adeyemi"` and `"  BAYO   ADEYEMI "` are one person,
+while `"Bayo Adeyemo"` is someone else. The first version of that index used
+plain `btrim` and let inner double-spaces through — worth testing rather than
+assuming.
+
+The movement dialog falls back to a free-text field when nobody is listed yet,
+and always offers "Someone else…", so a cover shift is never a reason to leave
+the field blank.
+
 ## Keys changing hands
 
 Releasing or checking a vehicle back in records **how many keys moved**, with a

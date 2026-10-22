@@ -58,6 +58,9 @@
     /* Stop pull-to-refresh and the whole-page rubber band; this is an app, not
        a document. Inner scrollers use `contain` instead. */
     overscroll-behavior: none;
+    /* Panning yes, zooming no. See src/lib/lock-zoom.ts for why the meta tag
+       alone is not enough and what this costs. */
+    touch-action: pan-x pan-y;
   }
 
   body {

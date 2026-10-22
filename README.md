@@ -57,10 +57,16 @@ that feels installed. Each is one declaration, and each is there for a reason:
 | Taps feel laggy | `touch-action: manipulation` on controls |
 | Long press selects a button's label | `user-select: none` on controls only — never on `<a>`, since the tel: and mailto: links are content people copy |
 
-**Zoom is deliberately not disabled.** `user-scalable=no` and `maximum-scale=1`
-are accessibility failures, and iOS Safari has ignored them since iOS 10 anyway.
-The input font size was the actual cause of unwanted zooming, and that is fixed
-at the source.
+**Pinch-zoom is disabled**, by request — see [src/lib/lock-zoom.ts](src/lib/lock-zoom.ts),
+which documents the three mechanisms it takes and how to undo it. The viewport
+meta covers Android, `touch-action: pan-x pan-y` is the standards-based half,
+and a `gesture*` listener is needed because iOS Safari has ignored
+`user-scalable=no` since iOS 10.
+
+This has a real cost: nobody can pinch to read small text. It is mitigated
+rather than ignored — inputs are 16px so nothing needs zooming to read or type,
+and the detail-page gallery opens photos in a new browser tab, which keeps its
+own normal zoom, so a VIN plate can still be inspected closely.
 
 Tailwind v3's `hoverOnlyWhenSupported` does not cover `group-hover`, which
 compiles to `.group:hover .group-hover\:x`. Those decorative nudges are

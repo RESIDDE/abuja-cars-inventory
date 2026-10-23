@@ -80,11 +80,24 @@ export function DashboardHero({
           </button>
         </div>
 
-        <div className="ml-auto text-right">
-          <p className="text-2xl tracking-tight sm:text-[1.75rem]">Hey there!</p>
-          <p className="text-sm font-light text-muted-foreground sm:text-base">
-            Explore your inventory history
-          </p>
+        <div className="ml-auto flex items-center gap-3 sm:gap-4">
+          <div className="text-right">
+            <p className="text-2xl tracking-tight sm:text-[1.75rem]">Hey there!</p>
+            <p className="text-sm font-light text-muted-foreground sm:text-base">
+              Explore your inventory history
+            </p>
+          </div>
+          {/* Purely decorative, so it carries no alt text and is hidden from
+              screen readers. */}
+          <img
+            src="/bow.png"
+            alt=""
+            aria-hidden="true"
+            width={219}
+            height={221}
+            decoding="async"
+            className="h-12 w-auto shrink-0 drop-shadow-[0_6px_12px_hsl(160_20%_20%/.25)] sm:h-16"
+          />
         </div>
       </div>
 

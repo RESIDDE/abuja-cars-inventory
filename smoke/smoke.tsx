@@ -233,6 +233,8 @@ const html = renderToString(tree).replace(/<!--\s*-->/g, '')
 const checks: [string, boolean][] = [
   ['hero renders the total', html.includes('All Vehicles')],
   ['greeting present', html.includes('Explore your inventory history')],
+  ['bow sits on the right of the hero', html.includes('/bow.png')],
+  ['bow is decorative, not announced', html.includes('src="/bow.png" alt="" aria-hidden="true"')],
   // Identity lives in the nav account menu; repeating it in the hero was noise.
   ['hero does not repeat the signed-in email', !html.includes('staff@abujacar.ng')],
   ['check-in button is labelled for icon-only mode', html.includes('aria-label="Check in vehicle"')],

@@ -12,6 +12,7 @@ import {
   Package,
   Pencil,
   Phone,
+  Tag,
   User,
 } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
@@ -27,11 +28,16 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePhotoUrls } from '@/hooks/use-photo-urls'
 import { useVehicleEvents } from '@/hooks/use-vehicle-events'
 import { useVehicle } from '@/hooks/use-vehicles'
-import { STATUS_LABEL } from '@/lib/constants'
+import {
+  CONDITION_LABEL,
+  REGISTRATION_LABEL,
+  STATUS_LABEL,
+} from '@/lib/constants'
 import { formatBytes } from '@/lib/image'
 import {
   countBelongings,
   formatDate,
+  formatMileage,
   formatNaira,
   telHref,
   vehicleTitle,
@@ -93,6 +99,7 @@ export default function VehicleDetailPage() {
   const { data: photoUrls = {} } = usePhotoUrls(vehicle?.photos)
 
   const [movementOpen, setMovementOpen] = React.useState(false)
+  const [sellOpen, setSellOpen] = React.useState(false)
   const [editOpen, setEditOpen] = React.useState(false)
 
   if (isError) {
@@ -118,6 +125,7 @@ export default function VehicleDetailPage() {
   }
 
   const inStock = vehicle.status === 'in_stock'
+  const sold = vehicle.status === 'sold'
   const owner = vehicle.owner
 
   return (
@@ -147,15 +155,22 @@ export default function VehicleDetailPage() {
 
           <div className="flex flex-col items-start gap-3 sm:items-end">
             <div className="sm:text-right">
-              <p className="text-xs uppercase tracking-wide text-muted-foreground">Price</p>
+              <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                {sold ? 'Sold for' : 'Price'}
+              </p>
               <p className="text-2xl font-semibold tracking-tight">
-                {formatNaira(vehicle.price)}
+                {formatNaira(sold ? (vehicle.sale_price ?? vehicle.price) : vehicle.price)}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" onClick={() => setEditOpen(true)}>
                 <Pencil /> Edit
               </Button>
+              {!sold ? (
+                <Button variant="outline" onClick={() => setSellOpen(true)}>
+                  <Tag /> Sold
+                </Button>
+              ) : null}
               <Button onClick={() => setMovementOpen(true)}>
                 {inStock ? (
                   <>
@@ -218,6 +233,19 @@ export default function VehicleDetailPage() {
               <Spec label="Body type" value={vehicle.body_type ?? '—'} />
               <Spec label="Colour" value={vehicle.color ?? '—'} />
               <Spec label="Plate number" value={vehicle.plate_number ?? '—'} />
+              <Spec
+                label="Condition"
+                value={vehicle.condition ? CONDITION_LABEL[vehicle.condition] : '—'}
+              />
+              <Spec
+                label="Mileage"
+                value={formatMileage(vehicle.mileage, vehicle.mileage_unit)}
+              />
+              <Spec
+                label="Registration"
+                value={vehicle.registration ? REGISTRATION_LABEL[vehicle.registration] : '—'}
+              />
+              <Spec label="Interior" value={vehicle.interior ?? '—'} />
               <Spec label="VIN" value={vehicle.vin ?? '—'} mono className="col-span-2" />
               <Spec
                 label="Keys held"
@@ -280,6 +308,13 @@ export default function VehicleDetailPage() {
                 label="Released date"
                 value={vehicle.released_date ? formatDate(vehicle.released_date) : 'Still held'}
               />
+              {vehicle.sold_date ? (
+                <>
+                  <Spec label="Sold on" value={formatDate(vehicle.sold_date)} />
+                  <Spec label="Sold to" value={vehicle.buyer_name ?? '—'} />
+                  <Spec label="Sale price" value={formatNaira(vehicle.sale_price)} />
+                </>
+              ) : null}
               <Spec label="Record created" value={formatDate(vehicle.created_at)} />
               <Spec label="Last updated" value={formatDate(vehicle.updated_at)} />
             </dl>
@@ -358,6 +393,12 @@ export default function VehicleDetailPage() {
         onOpenChange={setMovementOpen}
         vehicle={vehicle}
         eventType={inStock ? 'released' : 'checked_in'}
+      />
+      <MovementDialog
+        open={sellOpen}
+        onOpenChange={setSellOpen}
+        vehicle={vehicle}
+        eventType="sold"
       />
       <VehicleFormDialog open={editOpen} onOpenChange={setEditOpen} vehicle={vehicle} />
     </div>

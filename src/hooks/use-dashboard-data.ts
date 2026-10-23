@@ -21,6 +21,7 @@ export function useDashboardData() {
   const derived = useMemo(() => {
     const inStock = vehicles.filter((v) => v.status === 'in_stock')
     const released = vehicles.filter((v) => v.status === 'released')
+    const sold = vehicles.filter((v) => v.status === 'sold')
     const series = buildInventorySeries(vehicles, CHART_DAYS)
     const totals = custodyTotals(inStock)
     const intakeLast30 = series.reduce((sum, day) => sum + day.checkedIn, 0)
@@ -29,6 +30,7 @@ export function useDashboardData() {
       vehicles,
       inStock,
       released,
+      sold,
       series,
       totals,
       intakeLast30,

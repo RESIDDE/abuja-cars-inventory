@@ -33,7 +33,12 @@ import { Textarea } from '@/components/ui/textarea'
 import { useCreateOwner, useOwners } from '@/hooks/use-owners'
 import { useCreateVehicle, useUpdateVehicle } from '@/hooks/use-vehicles'
 import type { OwnerSelection, VehicleInput } from '@/hooks/use-vehicles'
-import { BODY_TYPES } from '@/lib/constants'
+import {
+  BODY_TYPES,
+  CONDITION_LABEL,
+  MILEAGE_UNITS,
+  REGISTRATION_LABEL,
+} from '@/lib/constants'
 import { describeDbError } from '@/lib/errors'
 import { toDateInputValue } from '@/lib/format'
 import { planVinApply } from '@/lib/apply-vin-read'
@@ -72,6 +77,11 @@ const schema = z
     vin: z.string(),
     plate: z.string(),
     keysCount: z.string(),
+    condition: z.string(),
+    mileage: z.string(),
+    mileageUnit: z.string(),
+    registration: z.string(),
+    interior: z.string(),
     price: z.number().nullable(),
     intakeDate: z.string().min(1, 'Intake date is required'),
     belongings: z.array(belongingSchema),
@@ -133,6 +143,18 @@ const schema = z
       })
     }
 
+    const mileage = values.mileage.trim()
+    if (mileage) {
+      const parsed = Number(mileage.replace(/[,\s]/g, ''))
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['mileage'],
+          message: 'Mileage must be a number',
+        })
+      }
+    }
+
     const keys = Number(values.keysCount)
     if (!Number.isInteger(keys) || keys < 0) {
       ctx.addIssue({
@@ -161,6 +183,11 @@ function emptyValues(): FormValues {
     vin: '',
     plate: '',
     keysCount: '1',
+    condition: 'used',
+    mileage: '',
+    mileageUnit: 'km',
+    registration: '',
+    interior: '',
     price: null,
     intakeDate: toDateInputValue(new Date()),
     belongings: [],
@@ -181,6 +208,11 @@ function valuesFromVehicle(vehicle: VehicleWithOwner): FormValues {
     vin: vehicle.vin ?? '',
     plate: vehicle.plate_number ?? '',
     keysCount: String(vehicle.keys_count ?? 1),
+    condition: vehicle.condition ?? '',
+    mileage: vehicle.mileage === null ? '' : String(vehicle.mileage),
+    mileageUnit: vehicle.mileage_unit ?? 'km',
+    registration: vehicle.registration ?? '',
+    interior: vehicle.interior ?? '',
     price: vehicle.price,
     intakeDate: vehicle.intake_date.slice(0, 10),
     belongings: vehicle.belongings,
@@ -323,6 +355,13 @@ export function VehicleFormDialog({
       color: values.color || null,
       plate_number: values.plate || null,
       keys_count: Number(values.keysCount),
+      condition: values.condition || null,
+      mileage: values.mileage.trim()
+        ? Number(values.mileage.replace(/[,\s]/g, ''))
+        : null,
+      mileage_unit: values.mileageUnit,
+      registration: values.registration || null,
+      interior: values.interior || null,
       belongings: values.belongings as Belonging[],
       price: values.price,
       intake_date: values.intakeDate,
@@ -561,6 +600,82 @@ export function VehicleFormDialog({
             </Field>
             <Field label="Plate number" htmlFor="plate">
               <Input id="plate" placeholder="ABC 123 XY" {...form.register('plate')} />
+            </Field>
+
+            <Field label="Condition" error={errors.condition?.message}>
+              <Controller
+                control={form.control}
+                name="condition"
+                render={({ field }) => (
+                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="New or used" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(['used', 'new'] as const).map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {CONDITION_LABEL[value]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
+            <Field label="Mileage" htmlFor="mileage" error={errors.mileage?.message}>
+              <div className="flex gap-2">
+                <Input
+                  id="mileage"
+                  inputMode="numeric"
+                  placeholder="84000"
+                  className="flex-1"
+                  {...form.register('mileage')}
+                />
+                <Controller
+                  control={form.control}
+                  name="mileageUnit"
+                  render={({ field }) => (
+                    <Select value={field.value || 'km'} onValueChange={field.onChange}>
+                      <SelectTrigger className="w-24 shrink-0">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MILEAGE_UNITS.map((unit) => (
+                          <SelectItem key={unit} value={unit}>
+                            {unit}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+              </div>
+            </Field>
+
+            <Field label="Registration" error={errors.registration?.message}>
+              <Controller
+                control={form.control}
+                name="registration"
+                render={({ field }) => (
+                  <Select value={field.value || undefined} onValueChange={field.onChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Where is it registered?" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(['nigeria', 'foreign'] as const).map((value) => (
+                        <SelectItem key={value} value={value}>
+                          {REGISTRATION_LABEL[value]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </Field>
+
+            <Field label="Interior" htmlFor="interior" hint="Optional">
+              <Input id="interior" placeholder="Black leather" {...form.register('interior')} />
             </Field>
 
             <Field

@@ -6,7 +6,9 @@ import {
   History,
   KeyRound,
   Package,
+  Gauge,
   Pencil,
+  Tag,
   Trash2,
   User,
 } from 'lucide-react'
@@ -14,8 +16,14 @@ import { useNavigate } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { STATUS_LABEL } from '@/lib/constants'
-import { countBelongings, formatDate, formatNaira, vehicleTitle } from '@/lib/format'
+import { CONDITION_LABEL, REGISTRATION_SHORT, STATUS_LABEL } from '@/lib/constants'
+import {
+  countBelongings,
+  formatDate,
+  formatMileage,
+  formatNaira,
+  vehicleTitle,
+} from '@/lib/format'
 import type { VehicleWithOwner } from '@/types/database'
 
 interface VehicleCardProps {
@@ -23,6 +31,7 @@ interface VehicleCardProps {
   /** Signed URL for the first picture, resolved once for the whole grid. */
   photoUrl?: string
   onMove: (vehicle: VehicleWithOwner) => void
+  onSell: (vehicle: VehicleWithOwner) => void
   onHistory: (vehicle: VehicleWithOwner) => void
   onEdit: (vehicle: VehicleWithOwner) => void
   onDelete: (vehicle: VehicleWithOwner) => void
@@ -32,12 +41,14 @@ export function VehicleCard({
   vehicle,
   photoUrl,
   onMove,
+  onSell,
   onHistory,
   onEdit,
   onDelete,
 }: VehicleCardProps) {
   const navigate = useNavigate()
   const inStock = vehicle.status === 'in_stock'
+  const sold = vehicle.status === 'sold'
   const open = () => navigate(`/vehicles/${vehicle.id}`)
 
   /** The card is the link; the buttons on it are not. */
@@ -84,6 +95,27 @@ export function VehicleCard({
         </Badge>
       </header>
 
+      {vehicle.condition || vehicle.mileage !== null || vehicle.registration ? (
+        <div className="flex flex-wrap gap-1.5">
+          {vehicle.condition ? (
+            <Badge variant="muted" className="px-2 py-0.5 text-[0.65rem]">
+              {CONDITION_LABEL[vehicle.condition]}
+            </Badge>
+          ) : null}
+          {vehicle.mileage !== null ? (
+            <Badge variant="muted" className="px-2 py-0.5 text-[0.65rem]">
+              <Gauge className="size-3" />
+              {formatMileage(vehicle.mileage, vehicle.mileage_unit)}
+            </Badge>
+          ) : null}
+          {vehicle.registration ? (
+            <Badge variant="muted" className="px-2 py-0.5 text-[0.65rem]">
+              {REGISTRATION_SHORT[vehicle.registration]}
+            </Badge>
+          ) : null}
+        </div>
+      ) : null}
+
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 text-xs">
         <div className="col-span-2">
           <dt className="text-muted-foreground">VIN</dt>
@@ -127,9 +159,11 @@ export function VehicleCard({
 
       <div className="flex items-end justify-between gap-3 border-t border-white/40 pt-3">
         <div>
-          <p className="text-[0.7rem] uppercase tracking-wide text-muted-foreground">Price</p>
+          <p className="text-[0.7rem] uppercase tracking-wide text-muted-foreground">
+            {sold ? 'Sold for' : 'Price'}
+          </p>
           <p className="text-base font-semibold tracking-tight">
-            {formatNaira(vehicle.price)}
+            {formatNaira(sold ? (vehicle.sale_price ?? vehicle.price) : vehicle.price)}
           </p>
         </div>
         <div className="flex items-center gap-1.5">
@@ -164,22 +198,35 @@ export function VehicleCard({
         </div>
       </div>
 
-      <Button
-        variant={inStock ? 'default' : 'outline'}
-        size="sm"
-        className="w-full"
-        onClick={stop(() => onMove(vehicle))}
-      >
-        {inStock ? (
-          <>
-            <ArrowUpRight /> Release
-          </>
-        ) : (
-          <>
-            <ArrowDownLeft /> Check back in
-          </>
-        )}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          variant={inStock ? 'default' : 'outline'}
+          size="sm"
+          className="flex-1"
+          onClick={stop(() => onMove(vehicle))}
+        >
+          {inStock ? (
+            <>
+              <ArrowUpRight /> Release
+            </>
+          ) : (
+            <>
+              <ArrowDownLeft /> Check back in
+            </>
+          )}
+        </Button>
+
+        {!sold ? (
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex-1"
+            onClick={stop(() => onSell(vehicle))}
+          >
+            <Tag /> Sold
+          </Button>
+        ) : null}
+      </div>
     </article>
   )
 }

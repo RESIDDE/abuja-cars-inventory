@@ -23,6 +23,11 @@ export interface PreparedRow {
   vehicle: {
     make: string
     model: string
+    condition: string | null
+    mileage: number | null
+    mileage_unit: string
+    registration: string | null
+    interior: string | null
     body_type: string | null
     year: number | null
     vin: string | null
@@ -144,6 +149,48 @@ const BODY_SYNONYMS: Record<string, string> = {
   'station wagon': 'Wagon',
 }
 
+/** "used", "Nigerian Used", "Tokunbo" and "brand new" all turn up. */
+function matchCondition(raw: string): { value: string | null; warning?: string } {
+  if (!raw) return { value: null }
+  const key = raw.toLowerCase()
+  if (/\bnew\b/.test(key) && !/used/.test(key)) return { value: 'new' }
+  if (/used|tokunbo|second|fairly/.test(key)) return { value: 'used' }
+  return { value: null, warning: `Condition "${raw}" was not understood; left blank` }
+}
+
+/**
+ * Nigerian sheets say "Nigerian used", "Tokunbo", "Belgium", "foreign used" or
+ * "custom duty paid". Anything that is plainly local counts as registered
+ * here; anything plainly imported does not.
+ */
+function matchRegistration(raw: string): { value: string | null; warning?: string } {
+  if (!raw) return { value: null }
+  const key = raw.toLowerCase()
+  if (/nigeria|local|naija|registered|duty ?paid|home/.test(key)) return { value: 'nigeria' }
+  if (/foreign|tokunbo|import|abroad|belgium|usa|us |uk|canada|outside|unregistered|not ?registered/.test(key)) {
+    return { value: 'foreign' }
+  }
+  return { value: null, warning: `Registration "${raw}" was not understood; left blank` }
+}
+
+/** "84,000", "84000 km", "52k miles". Returns the number and any unit seen. */
+function parseMileage(raw: string): { value: number | null; unit: string; error?: string } {
+  if (!raw) return { value: null, unit: 'km' }
+  const unit = /\bmi\b|mile/i.test(raw) ? 'mi' : 'km'
+  let text = raw.toLowerCase().replace(/km|kms|miles|mile|mi\b/g, '').replace(/[,\s]/g, '')
+  let multiplier = 1
+  if (/^\d+(\.\d+)?k$/.test(text)) {
+    multiplier = 1000
+    text = text.slice(0, -1)
+  }
+  if (!text) return { value: null, unit }
+  const n = Number(text) * multiplier
+  if (!Number.isFinite(n) || n < 0) {
+    return { value: null, unit, error: `Mileage "${raw}" is not a number` }
+  }
+  return { value: Math.round(n), unit }
+}
+
 function matchBodyType(raw: string): { value: string | null; warning?: string } {
   if (!raw) return { value: null }
   const key = raw.toLowerCase().trim().replace(/\s+/g, ' ')
@@ -237,6 +284,15 @@ export function prepareRows({
     const bodyType = matchBodyType(get('bodyType'))
     if (bodyType.warning) warnings.push(bodyType.warning)
 
+    const condition = matchCondition(get('condition'))
+    if (condition.warning) warnings.push(condition.warning)
+
+    const registration = matchRegistration(get('registration'))
+    if (registration.warning) warnings.push(registration.warning)
+
+    const mileage = parseMileage(get('mileage'))
+    if (mileage.error) errors.push(mileage.error)
+
     const intake = parseSheetDate(get('intakeDate'), today)
     if (intake.warning) warnings.push(intake.warning)
 
@@ -276,6 +332,11 @@ export function prepareRows({
         color: get('color') || null,
         plate_number: get('plate')?.toUpperCase() || null,
         keys_count: keys,
+        condition: condition.value,
+        mileage: mileage.value,
+        mileage_unit: mileage.unit,
+        registration: registration.value,
+        interior: get('interior') || null,
         price: price.value,
         intake_date: intake.value,
         notes: get('notes') || null,

@@ -32,6 +32,7 @@ import { useStaffMembers } from '@/hooks/use-staff-members'
 import { useRecordMovement, useVehicleEvents } from '@/hooks/use-vehicle-events'
 import { describeDbError } from '@/lib/errors'
 import { uploadSignature } from '@/lib/storage'
+import { CurrencyInput } from '@/components/vehicles/currency-input'
 import { formatDate, toDateTimeInputValue, vehicleTitle } from '@/lib/format'
 import type { VehicleEventType, VehicleWithOwner } from '@/types/database'
 
@@ -61,7 +62,10 @@ export function MovementDialog({
   eventType,
 }: MovementDialogProps) {
   const recordMovement = useRecordMovement()
-  const releasing = eventType === 'released'
+  const selling = eventType === 'sold'
+  // A sale also takes the vehicle out of the yard, so it shares the release
+  // side of every label and default.
+  const releasing = eventType === 'released' || selling
 
   // How many keys the yard currently holds, and what went out last time.
   const heldKeys = vehicle?.keys_count ?? 0
@@ -81,6 +85,7 @@ export function MovementDialog({
     [staffMembers],
   )
   const [staffOther, setStaffOther] = React.useState(false)
+  const [salePrice, setSalePrice] = React.useState<number | null>(null)
 
   const signature = React.useRef<SignaturePadHandle>(null)
   const [signed, setSigned] = React.useState(false)
@@ -109,7 +114,8 @@ export function MovementDialog({
     setStaffOther(false)
     signature.current?.clear()
     setSigned(false)
-  }, [open, form, releasing, heldKeys, lastRelease])
+    setSalePrice(vehicle?.sale_price ?? vehicle?.price ?? null)
+  }, [open, form, releasing, heldKeys, lastRelease, vehicle])
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!vehicle) return
@@ -131,8 +137,11 @@ export function MovementDialog({
         notes: values.notes,
         keysCount: keys,
         signaturePath,
+        salePrice: selling ? salePrice : null,
       })
-      toast.success(releasing ? 'Vehicle released' : 'Vehicle checked back in')
+      toast.success(
+        selling ? 'Sale recorded' : releasing ? 'Vehicle released' : 'Vehicle checked back in',
+      )
       onOpenChange(false)
     } catch (error) {
       toast.error(describeDbError(error))
@@ -145,7 +154,9 @@ export function MovementDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{releasing ? 'Release vehicle' : 'Check back in'}</DialogTitle>
+          <DialogTitle>
+            {selling ? 'Record a sale' : releasing ? 'Release vehicle' : 'Check back in'}
+          </DialogTitle>
           <DialogDescription>
             {vehicle ? vehicleTitle(vehicle) : ''}
             {vehicle?.plate_number ? ` · ${vehicle.plate_number}` : ''}
@@ -153,6 +164,12 @@ export function MovementDialog({
         </DialogHeader>
 
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          {selling ? (
+            <Field label="Sale price (NGN)" hint="Defaults to the price on the record">
+              <CurrencyInput value={salePrice} onChange={setSalePrice} placeholder="0" />
+            </Field>
+          ) : null}
+
           <Field
             label="Date & time"
             htmlFor="occurredAt"
@@ -252,7 +269,7 @@ export function MovementDialog({
           </Field>
 
           <Field
-            label={releasing ? 'Released to' : 'Received from'}
+            label={selling ? 'Sold to' : releasing ? 'Released to' : 'Received from'}
             htmlFor="recipientName"
             hint="Optional"
           >
@@ -269,7 +286,11 @@ export function MovementDialog({
 
           <div className="space-y-1.5">
             <Label>
-              {releasing ? 'Signature — person taking the vehicle' : 'Signature — person returning it'}
+              {selling
+                ? 'Signature — buyer'
+                : releasing
+                  ? 'Signature — person taking the vehicle'
+                  : 'Signature — person returning it'}
             </Label>
             <SignaturePad
               ref={signature}
@@ -298,7 +319,7 @@ export function MovementDialog({
             </Button>
             <Button type="submit" disabled={busy}>
               {busy ? <Loader2 className="animate-spin" /> : null}
-              {releasing ? 'Record release' : 'Record check-in'}
+              {selling ? 'Record sale' : releasing ? 'Record release' : 'Record check-in'}
             </Button>
           </DialogFooter>
         </form>

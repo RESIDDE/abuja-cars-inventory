@@ -26,6 +26,7 @@ export default function DashboardPage() {
     vehicles,
     inStock,
     released,
+    sold,
     series,
     totals,
     intakeLast30,
@@ -67,6 +68,7 @@ export default function DashboardPage() {
         totalCount={totalCount}
         inStockCount={inStock.length}
         releasedCount={released.length}
+        soldCount={sold.length}
         ownerCount={ownerCount}
         series={series}
         onCheckIn={() => setFormOpen(true)}

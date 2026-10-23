@@ -47,12 +47,16 @@ export function normalizePhotos(raw: unknown): VehiclePhoto[] {
 }
 
 export function normalizeVehicle(row: Record<string, unknown>): VehicleWithOwner {
-  const { owner, belongings, photos, price, ...rest } = row as unknown as Vehicle & {
-    owner?: Owner | Owner[] | null
-  }
+  const { owner, belongings, photos, price, sale_price, mileage, ...rest } =
+    row as unknown as Vehicle & { owner?: Owner | Owner[] | null }
+
+  const num = (value: unknown) =>
+    value === null || value === undefined ? null : Number(value)
 
   return {
-    ...(rest as Omit<Vehicle, 'belongings' | 'photos' | 'price'>),
+    ...(rest as Omit<Vehicle, 'belongings' | 'photos' | 'price' | 'sale_price' | 'mileage'>),
+    mileage: num(mileage),
+    sale_price: num(sale_price),
     belongings: normalizeBelongings(belongings),
     photos: normalizePhotos(photos),
     // numeric(12,2) arrives as a string on some driver paths.

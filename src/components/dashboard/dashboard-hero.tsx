@@ -10,6 +10,7 @@ interface DashboardHeroProps {
   totalCount: number
   inStockCount: number
   releasedCount: number
+  soldCount: number
   ownerCount: number
   series: InventoryDay[]
   onCheckIn: () => void
@@ -19,6 +20,7 @@ export function DashboardHero({
   totalCount,
   inStockCount,
   releasedCount,
+  soldCount,
   ownerCount,
   series,
   onCheckIn,
@@ -37,6 +39,12 @@ export function DashboardHero({
       value: releasedCount,
       swatch: 'bg-white/85',
       to: '/vehicles?status=released',
+    },
+    {
+      label: 'Sold',
+      value: soldCount,
+      swatch: 'bg-[hsl(28_70%_55%)]',
+      to: '/vehicles?status=sold',
     },
     {
       label: 'Owners',

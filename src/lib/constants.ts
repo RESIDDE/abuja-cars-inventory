@@ -1,4 +1,9 @@
-import type { VehicleStatus } from '@/types/database'
+import type {
+  MileageUnit,
+  RegistrationOrigin,
+  VehicleCondition,
+  VehicleStatus,
+} from '@/types/database'
 
 export const BODY_TYPES = [
   'Sedan',
@@ -32,7 +37,26 @@ export const COMMON_BELONGINGS = [
 export const STATUS_LABEL: Record<VehicleStatus, string> = {
   in_stock: 'In Stock',
   released: 'Released',
+  sold: 'Sold',
 }
+
+export const CONDITION_LABEL: Record<VehicleCondition, string> = {
+  new: 'New',
+  used: 'Used',
+}
+
+export const REGISTRATION_LABEL: Record<RegistrationOrigin, string> = {
+  nigeria: 'Registered in Nigeria',
+  foreign: 'Foreign / not registered here',
+}
+
+/** Short form, for a card where the full phrase would not fit. */
+export const REGISTRATION_SHORT: Record<RegistrationOrigin, string> = {
+  nigeria: 'Nigerian reg.',
+  foreign: 'Foreign reg.',
+}
+
+export const MILEAGE_UNITS: MileageUnit[] = ['km', 'mi']
 
 /** How far back the dashboard charts look. */
 export const CHART_DAYS = 30

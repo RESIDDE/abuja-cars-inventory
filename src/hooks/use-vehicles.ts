@@ -28,6 +28,11 @@ export interface VehicleInput {
   color?: string | null
   plate_number?: string | null
   keys_count: number
+  condition?: string | null
+  mileage?: number | null
+  mileage_unit?: string
+  registration?: string | null
+  interior?: string | null
   belongings: Belonging[]
   price?: number | null
   intake_date: string
@@ -55,6 +60,14 @@ function cleanVehicleInput(input: VehicleInput) {
     color: trim(input.color),
     plate_number: trim(input.plate_number)?.toUpperCase() ?? null,
     keys_count: Number.isFinite(input.keys_count) ? Math.max(0, input.keys_count) : 1,
+    condition: trim(input.condition),
+    mileage:
+      input.mileage === null || input.mileage === undefined
+        ? null
+        : Math.max(0, Math.round(input.mileage)),
+    mileage_unit: input.mileage_unit === 'mi' ? 'mi' : 'km',
+    registration: trim(input.registration),
+    interior: trim(input.interior),
     belongings: input.belongings.map((b) => ({
       item: b.item.trim(),
       qty: b.qty,

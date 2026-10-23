@@ -35,6 +35,8 @@ export interface MovementInput {
   keysCount?: number | null
   /** Path of an already-uploaded signature image. */
   signaturePath?: string | null
+  /** Only meaningful on a sale. */
+  salePrice?: number | null
 }
 
 /**
@@ -56,6 +58,7 @@ export function useRecordMovement() {
         p_notes: input.notes ?? null,
         p_keys_count: input.keysCount ?? null,
         p_signature_path: input.signaturePath ?? null,
+        p_sale_price: input.salePrice ?? null,
       })
       if (error) throw error
       return data as VehicleEvent

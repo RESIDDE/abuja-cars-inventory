@@ -33,6 +33,7 @@ const FILTERS: { label: string; value: VehicleStatus | 'all' }[] = [
   { label: 'All', value: 'all' },
   { label: 'In Stock', value: 'in_stock' },
   { label: 'Released', value: 'released' },
+  { label: 'Sold', value: 'sold' },
 ]
 
 function searchHaystack(vehicle: VehicleWithOwner) {
@@ -72,7 +73,9 @@ export default function VehiclesPage() {
   // filtered view and it survives a refresh.
   const statusParam = searchParams.get('status')
   const status: VehicleStatus | 'all' =
-    statusParam === 'in_stock' || statusParam === 'released' ? statusParam : 'all'
+    statusParam === 'in_stock' || statusParam === 'released' || statusParam === 'sold'
+      ? statusParam
+      : 'all'
 
   const setStatus = (next: VehicleStatus | 'all') => {
     const params = new URLSearchParams(searchParams)
@@ -120,6 +123,7 @@ export default function VehiclesPage() {
       all: scoped.length,
       in_stock: scoped.filter((v) => v.status === 'in_stock').length,
       released: scoped.filter((v) => v.status === 'released').length,
+      sold: scoped.filter((v) => v.status === 'sold').length,
     }),
     [scoped],
   )
@@ -291,6 +295,7 @@ export default function VehiclesPage() {
                   eventType: v.status === 'in_stock' ? 'released' : 'checked_in',
                 })
               }
+              onSell={(v) => setMovement({ vehicle: v, eventType: 'sold' })}
               onHistory={setHistory}
               onEdit={(v) => {
                 setEditing(v)

@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, History, KeyRound, PenLine } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, History, KeyRound, PenLine, Tag } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSignatureUrls } from '@/hooks/use-signature-urls'
@@ -53,8 +53,11 @@ export function MovementTimeline({
       />
 
       {events.map((event) => {
-        const released = event.event_type === 'released'
-        const Icon = released ? ArrowUpRight : ArrowDownLeft
+        const isSale = event.event_type === 'sold'
+        // A sale leaves the yard like a release, so it shares the outbound side
+        // of every label below.
+        const released = isSale || event.event_type === 'released'
+        const Icon = isSale ? Tag : released ? ArrowUpRight : ArrowDownLeft
         return (
           <li key={event.id} className="relative">
             <span
@@ -71,7 +74,7 @@ export function MovementTimeline({
             <div className="glass-tile rounded-2xl px-4 py-3">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <p className="text-sm font-medium">
-                  {released ? 'Released' : 'Checked in'}
+                  {isSale ? 'Sold' : released ? 'Released' : 'Checked in'}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {formatDateTime(event.occurred_at)}
@@ -84,7 +87,7 @@ export function MovementTimeline({
                 <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/45 bg-white/40 px-2.5 py-1 text-xs">
                   <KeyRound className="size-3 text-muted-foreground" />
                   <span className="font-medium">{event.keys_count}</span>
-                  {released ? 'released' : 'brought back'}
+                  {released ? 'handed over' : 'brought back'}
                 </p>
               ) : null}
 
@@ -99,7 +102,7 @@ export function MovementTimeline({
                   {event.recipient_name ? (
                     <div className="flex gap-1.5">
                       <dt className="text-muted-foreground">
-                        {released ? 'Released to' : 'Received from'}
+                        {isSale ? 'Sold to' : released ? 'Released to' : 'Received from'}
                       </dt>
                       <dd className="font-medium">{event.recipient_name}</dd>
                     </div>

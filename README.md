@@ -175,6 +175,37 @@ The movement dialog falls back to a free-text field when nobody is listed yet,
 and always offers "Someone else…", so a cover shift is never a reason to leave
 the field blank.
 
+## Selling a vehicle
+
+**Sold** sits alongside In Stock and Released as a third state, not a flag. A
+sold vehicle has left the yard like a released one, but ownership and money
+moved too, so the status constraint, the event type and `vi_record_movement`
+were extended together — a sale cannot be recorded without its movement.
+
+A sale sets `sold_date`, `sale_price` and `buyer_name`, deducts the keys handed
+over, **and sets `released_date`**. That last one matters: the dashboard's "held
+on this day" figure keys off `released_date`, so without it a sold vehicle would
+go on counting as if it were still on the lot.
+
+The sale price defaults to the asking price on the record, and the buyer's name
+and signature use the same fields as any other movement — "Sold to" rather than
+"Released to".
+
+## Condition, mileage, registration, interior
+
+On the vehicle record and on the import:
+
+| Field | Notes |
+| --- | --- |
+| Condition | New or Used |
+| Mileage | **With a unit.** A US import's odometer reads miles and a European one km; 100,000 of each is a very different car, so the unit is stored rather than assumed |
+| Registration | Registered in Nigeria, or foreign / not registered here |
+| Interior | Free text — "Black leather" |
+
+The importer reads how these are actually written locally: "Nigerian Used" and
+"Tokunbo" are both *used*, "Tokunbo", "Belgium" and "foreign used" all mean
+foreign registration, and mileage accepts `84,000`, `84000 km` and `52k miles`.
+
 ## Signatures on a movement
 
 Releasing or checking a vehicle back in offers a signature pad — finger, stylus

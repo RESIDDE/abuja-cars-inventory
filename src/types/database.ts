@@ -1,5 +1,5 @@
-export type VehicleStatus = 'in_stock' | 'released'
-export type VehicleEventType = 'checked_in' | 'released'
+export type VehicleStatus = 'in_stock' | 'released' | 'sold'
+export type VehicleEventType = 'checked_in' | 'released' | 'sold'
 
 /** One line of the arrival checklist. */
 export interface Belonging {
@@ -46,6 +46,11 @@ export interface Owner {
   updated_at: string
 }
 
+export type VehicleCondition = 'new' | 'used'
+export type MileageUnit = 'km' | 'mi'
+/** Where the vehicle is registered: here, or abroad / not yet registered. */
+export type RegistrationOrigin = 'nigeria' | 'foreign'
+
 export interface Vehicle {
   id: string
   owner_id: string
@@ -57,12 +62,20 @@ export interface Vehicle {
   color: string | null
   plate_number: string | null
   keys_count: number
+  condition: VehicleCondition | null
+  mileage: number | null
+  mileage_unit: MileageUnit
+  registration: RegistrationOrigin | null
+  interior: string | null
   belongings: Belonging[]
   photos: VehiclePhoto[]
   price: number | null
   status: VehicleStatus
   intake_date: string
   released_date: string | null
+  sold_date: string | null
+  sale_price: number | null
+  buyer_name: string | null
   notes: string | null
   created_at: string
   updated_at: string

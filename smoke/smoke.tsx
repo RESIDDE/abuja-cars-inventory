@@ -31,6 +31,7 @@ import {
 import { normalizeBelongings, normalizeVehicle } from '@/lib/normalize'
 import { parseModelJson } from '@/lib/model-json'
 import { formatBytes, MAX_UPLOAD_BYTES, validatePhotoFile } from '@/lib/image'
+import { formatMileage } from '@/lib/format'
 import { normalizePhotos } from '@/lib/normalize'
 import { findOwnersByPhone, phoneKey } from '@/lib/phone'
 import { autoMapColumns, normalizeHeader } from '@/lib/import/fields'
@@ -74,6 +75,11 @@ const vehicles: VehicleWithOwner[] = [
     color: 'Silver',
     plate_number: 'ABC 123 XY',
     keys_count: 2,
+    condition: 'used',
+    mileage: 84000,
+    mileage_unit: 'mi',
+    registration: 'foreign',
+    interior: 'Black leather',
     belongings: [
       { item: 'Spare tyre', qty: 1, note: 'Worn' },
       { item: 'Jack', qty: 1, note: null },
@@ -83,6 +89,9 @@ const vehicles: VehicleWithOwner[] = [
     status: 'in_stock',
     intake_date: today,
     released_date: null,
+    sold_date: null,
+    sale_price: null,
+    buyer_name: null,
     notes: 'Dent on rear bumper.',
     created_at: '2026-10-20T10:00:00Z',
     updated_at: '2026-10-20T10:00:00Z',
@@ -99,12 +108,20 @@ const vehicles: VehicleWithOwner[] = [
     color: null,
     plate_number: null,
     keys_count: 0,
+    condition: null,
+    mileage: null,
+    mileage_unit: 'km',
+    registration: null,
+    interior: null,
     belongings: [],
     photos: [],
     price: null,
     status: 'released',
     intake_date: '2026-10-01',
     released_date: '2026-10-15',
+    sold_date: null,
+    sale_price: null,
+    buyer_name: null,
     notes: null,
     created_at: '2026-10-01T10:00:00Z',
     updated_at: '2026-10-15T10:00:00Z',
@@ -167,6 +184,7 @@ const tree = (
         totalCount={vehicles.length}
         inStockCount={1}
         releasedCount={1}
+        soldCount={0}
         ownerCount={1}
         series={series}
         onCheckIn={noop}
@@ -180,6 +198,7 @@ const tree = (
           key={vehicle.id}
           vehicle={vehicle}
           onMove={noop}
+          onSell={noop}
           onHistory={noop}
           onEdit={noop}
           onDelete={noop}
@@ -215,13 +234,18 @@ const checks: [string, boolean][] = [
   ['owner tel link', html.includes('tel:08031112222')],
   ['owner mailto', html.includes('mailto:amaka@example.com')],
   ['timeline recipient label', html.includes('Released to')],
-  ['timeline shows keys released', html.includes('released')],
+  // "handed over" rather than "released", so the same chip reads correctly on
+  // a sale as well.
+  ['timeline shows the keys handed over', html.includes('handed over')],
   ['timeline credits the signatory', html.includes('Signed by Amaka Okonkwo')],
   ['signature pad prompts with the name', html.includes('Sign with a finger, stylus or mouse')],
   ['timeline omits keys when not recorded', !html.includes('brought back')],
   ['empty timeline copy', html.includes('No movements recorded yet.')],
   ['belongings chip', html.includes('Wheel spanner')],
   ['gauge percentage', html.includes('50%')],
+  ['card shows the mileage with its unit', html.includes('84,000 mi')],
+  ['card shows the condition', html.includes('Used')],
+  ['card offers a Sold button', html.includes('Sold')],
   ['brand mark points at the logo', html.includes('/abujacar-logo.png')],
   ['owner match hint names the owner', html.includes('That number is already on record')],
   ['owner match hint offers the switch', html.includes('Use this owner')],
@@ -492,6 +516,11 @@ const units: [string, unknown, unknown][] = [
   ],
   ['a half-typed number suggests nothing', findOwnersByPhone([owner], '080').length, 0],
 
+  // --- Condition, mileage, registration -------------------------------------
+  ['mileage keeps its unit', formatMileage(84000, 'mi'), '84,000 mi'],
+  ['mileage defaults to km', formatMileage(120000, null), '120,000 km'],
+  ['no mileage recorded', formatMileage(null, 'km'), '—'],
+
   // --- Sheet import -------------------------------------------------------
   ['header normalisation', normalizeHeader('Phone No.'), 'phoneno'],
   [
@@ -530,12 +559,12 @@ const units: [string, unknown, unknown][] = [
 
 const importMapping = {
   ownerName: 0, ownerPhone: 1, make: 2, model: 3, vin: 4, year: 5, price: 6,
-  keys: 7, bodyType: 8, intakeDate: 9,
+  keys: 7, bodyType: 8, intakeDate: 9, condition: 10, mileage: 11, registration: 12,
 } as const
 
 const importRows = prepareRows({
   rows: [
-    ['Musa Ibrahim', '0803 111 2222', 'Toyota', 'Corolla', 'JTDKB20U793094567', '2009', '₦12,500,000', '2', 'Sedan', '14/03/2026'],
+    ['Musa Ibrahim', '0803 111 2222', 'Toyota', 'Corolla', 'JTDKB20U793094567', '2009', '₦12,500,000', '2', 'Sedan', '14/03/2026', 'Nigerian Used', '84,000 km', 'Tokunbo'],
     ['', '', '', '', '', '', '', '', '', ''],
     ['Grace Eze', '0701 999 8888', 'Honda', 'Accord', '1HGBH41JXMN109186', '1991', '4,500,000', '1', 'saloon', ''],
     ['Copycat', '0805 000 1111', 'Kia', 'Rio', 'JTDKB20U793094567', '2015', '', '', '', ''],
@@ -587,6 +616,10 @@ const moreUnits: [string, unknown, unknown][] = [
     true,
   ],
   ['only the clean rows import', importableRows(importRows).length, 3],
+  ['"Nigerian Used" is a used car', byLine(2).vehicle.condition, 'used'],
+  ['mileage with a comma and unit', byLine(2).vehicle.mileage, 84000],
+  ['mileage unit detected', byLine(2).vehicle.mileage_unit, 'km'],
+  ['"Tokunbo" means foreign registration', byLine(2).vehicle.registration, 'foreign'],
 ]
 
 units.push(...moreUnits)

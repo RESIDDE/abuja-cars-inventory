@@ -122,3 +122,13 @@ export function initialsOf(name: string) {
       .join('') || '?'
   )
 }
+
+/** "84,000 mi" — the unit matters when the lot is full of imports. */
+export function formatMileage(
+  value: number | null | undefined,
+  unit: string | null | undefined,
+  fallback = '—',
+) {
+  if (value === null || value === undefined || Number.isNaN(value)) return fallback
+  return `${grouped.format(value)} ${unit === 'mi' ? 'mi' : 'km'}`
+}

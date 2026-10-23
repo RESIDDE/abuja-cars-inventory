@@ -198,25 +198,35 @@ export function VehicleCard({
         </div>
       </div>
 
-      <div className="flex gap-2">
-        <Button
-          variant={inStock ? 'default' : 'outline'}
-          size="sm"
-          className="flex-1"
-          onClick={stop(() => onMove(vehicle))}
-        >
-          {inStock ? (
-            <>
-              <ArrowUpRight /> Release
-            </>
-          ) : (
-            <>
-              <ArrowDownLeft /> Check back in
-            </>
-          )}
-        </Button>
+      {/* A sold vehicle has left for good: it cannot be released or checked
+          back in, so it is not offered. The database refuses it either way. */}
+      {sold ? (
+        <p className="flex items-center gap-2 rounded-full border border-white/45 bg-white/35 px-4 py-2 text-xs">
+          <Tag className="size-3.5 shrink-0 text-muted-foreground" />
+          <span className="truncate">
+            Sold to {vehicle.buyer?.full_name ?? vehicle.buyer_name ?? 'an unnamed buyer'}
+            {vehicle.sold_date ? ` · ${formatDate(vehicle.sold_date)}` : ''}
+          </span>
+        </p>
+      ) : (
+        <div className="flex gap-2">
+          <Button
+            variant={inStock ? 'default' : 'outline'}
+            size="sm"
+            className="flex-1"
+            onClick={stop(() => onMove(vehicle))}
+          >
+            {inStock ? (
+              <>
+                <ArrowUpRight /> Release
+              </>
+            ) : (
+              <>
+                <ArrowDownLeft /> Check back in
+              </>
+            )}
+          </Button>
 
-        {!sold ? (
           <Button
             variant="outline"
             size="sm"
@@ -225,8 +235,8 @@ export function VehicleCard({
           >
             <Tag /> Sold
           </Button>
-        ) : null}
-      </div>
+        </div>
+      )}
     </article>
   )
 }

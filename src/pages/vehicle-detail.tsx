@@ -166,22 +166,24 @@ export default function VehicleDetailPage() {
               <Button variant="outline" onClick={() => setEditOpen(true)}>
                 <Pencil /> Edit
               </Button>
+              {/* Sold is terminal for movements. Re-recording the sale stays
+                  available so a wrong price or buyer can be corrected. */}
+              <Button variant={sold ? 'outline' : 'outline'} onClick={() => setSellOpen(true)}>
+                <Tag /> {sold ? 'Correct sale' : 'Sold'}
+              </Button>
               {!sold ? (
-                <Button variant="outline" onClick={() => setSellOpen(true)}>
-                  <Tag /> Sold
+                <Button onClick={() => setMovementOpen(true)}>
+                  {inStock ? (
+                    <>
+                      <ArrowUpRight /> Release
+                    </>
+                  ) : (
+                    <>
+                      <ArrowDownLeft /> Check back in
+                    </>
+                  )}
                 </Button>
               ) : null}
-              <Button onClick={() => setMovementOpen(true)}>
-                {inStock ? (
-                  <>
-                    <ArrowUpRight /> Release
-                  </>
-                ) : (
-                  <>
-                    <ArrowDownLeft /> Check back in
-                  </>
-                )}
-              </Button>
             </div>
           </div>
         </div>

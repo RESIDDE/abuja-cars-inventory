@@ -70,6 +70,7 @@ export function MovementDialog({
 }: MovementDialogProps) {
   const recordMovement = useRecordMovement()
   const selling = eventType === 'sold'
+  const correcting = selling && vehicle?.status === 'sold'
   // A sale also takes the vehicle out of the yard, so it shares the release
   // side of every label and default.
   const releasing = eventType === 'released' || selling
@@ -188,7 +189,13 @@ export function MovementDialog({
         buyerId,
       })
       toast.success(
-        selling ? 'Sale recorded' : releasing ? 'Vehicle released' : 'Vehicle checked back in',
+        correcting
+          ? 'Sale corrected'
+          : selling
+            ? 'Sale recorded'
+            : releasing
+              ? 'Vehicle released'
+              : 'Vehicle checked back in',
       )
       onOpenChange(false)
     } catch (error) {
@@ -204,7 +211,13 @@ export function MovementDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {selling ? 'Record a sale' : releasing ? 'Release vehicle' : 'Check back in'}
+            {correcting
+              ? 'Correct the sale'
+              : selling
+                ? 'Record a sale'
+                : releasing
+                  ? 'Release vehicle'
+                  : 'Check back in'}
           </DialogTitle>
           <DialogDescription>
             {vehicle ? vehicleTitle(vehicle) : ''}
@@ -381,7 +394,13 @@ export function MovementDialog({
             </Button>
             <Button type="submit" disabled={busy}>
               {busy ? <Loader2 className="animate-spin" /> : null}
-              {selling ? 'Record sale' : releasing ? 'Record release' : 'Record check-in'}
+              {correcting
+                ? 'Save correction'
+                : selling
+                  ? 'Record sale'
+                  : releasing
+                    ? 'Record release'
+                    : 'Record check-in'}
             </Button>
           </DialogFooter>
         </form>

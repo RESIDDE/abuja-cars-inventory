@@ -198,6 +198,23 @@ this class of failure: it issues the app's real select strings, every column
 the client reads, and `vi_record_movement` with every argument, against the
 live project. **Run it after any migration.**
 
+## Sold is terminal
+
+A sold vehicle cannot be released or checked back in. This is enforced in
+`vi_record_movement`, not only hidden in the UI — it reads the current status
+`for update` (so two people cannot both see "not sold yet" and both write) and
+refuses any movement other than another sale.
+
+It mattered because the old behaviour silently corrupted the record: checking a
+sold vehicle back in reset it to `in_stock` and cleared `sold_date` while
+leaving `sale_price` and `buyer_name` in place, so it looked both on the lot and
+sold at once.
+
+**Recording the sale again is still allowed**, so a wrong price or buyer can be
+corrected — the detail page offers "Correct sale". That leaves a second `sold`
+event, which is an honest trail of the correction rather than a silent edit.
+A released vehicle can still be checked back in, as before.
+
 ## Buyers are customers, not a separate list
 
 A buyer is a row in `vi_owners` like anybody else, linked from the vehicle by

@@ -96,6 +96,7 @@ const vehicles: VehicleWithOwner[] = [
     created_at: '2026-10-20T10:00:00Z',
     updated_at: '2026-10-20T10:00:00Z',
     owner,
+    buyer: null,
   },
   {
     id: 'v2',
@@ -127,6 +128,7 @@ const vehicles: VehicleWithOwner[] = [
     created_at: '2026-10-01T10:00:00Z',
     updated_at: '2026-10-15T10:00:00Z',
     owner: null,
+    buyer: owner,
   },
 ]
 
@@ -253,6 +255,10 @@ const checks: [string, boolean][] = [
   ['card shows the mileage with its unit', html.includes('84,000 mi')],
   ['card shows the condition', html.includes('Used')],
   ['card offers a Sold button', html.includes('Sold')],
+  // A sold vehicle must not offer to be released or checked back in — the
+  // database refuses it, and the card should not invite the attempt.
+  ['sold card shows who bought it', html.includes('Sold to Amaka Okonkwo')],
+  ['sold card offers no check-back-in', !html.includes('Check back in')],
   ['customer card lists what they bought', html.includes('Bought from you')],
   ['purchase shows its sale price', html.includes('7,250,000')],
   ['customer card counts both relationships', html.includes('2 stored') && html.includes('1 bought')],

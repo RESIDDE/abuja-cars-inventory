@@ -227,6 +227,53 @@ back than went out, the dialog says so and asks for a note. It never blocks —
 sometimes a key really is lost, and the log should say that rather than refuse
 to record it.
 
+## Importing a spreadsheet
+
+`/import`, reached from the Vehicles page or the account menu. Each row becomes
+its own vehicle record attached to its owner, and **nothing is written until you
+have seen exactly what will be created**.
+
+Four steps: choose a CSV or `.xlsx`, confirm the column mapping (guessed from
+your headings), review a row-by-row preview, then import. A blank template is
+downloadable from step one.
+
+**Parsers.** `papaparse` for CSV, `exceljs` for `.xlsx`. Deliberately **not**
+`xlsx`/SheetJS: the npm build carries two HIGH advisories — prototype pollution
+and ReDoS — with **no fix published** there, and pointing that at a file
+somebody emailed you is a poor trade. exceljs loads only when an `.xlsx` is
+actually opened, so the 929 KB parser never reaches anyone importing CSV.
+
+**It expects real-world sheets**, not clean ones:
+
+- A UTF-8 BOM from Excel's "CSV UTF-8" export, which would otherwise corrupt the
+  first header so that column silently fails to map
+- Quoted fields containing commas, and CRLF line endings
+- Blank rows, which are counted and skipped
+- Prices as `₦12,500,000`, `NGN 4500000` or `4500000.00`
+- Dates as ISO, `14/03/2026` (day-first, the local convention), two-digit years,
+  Excel serial numbers, or a real Date cell
+- **Local vocabulary**: "Saloon" is a Sedan and "Jeep" is an SUV — in a body-type
+  column that is a shape, not a manufacturer
+
+**Validation happens before anything is written.** A row is skipped, with the
+reason against its line number, for a missing required field, an impossible
+year, a malformed VIN, a VIN already on record, or a VIN repeated earlier in the
+same file. Softer problems become notes and still import.
+
+**Owners are matched by phone**, using the same last-ten-digits rule as the
+check-in form, so a sheet listing one customer's five cars creates one owner.
+If the number already belongs to somebody, the vehicle attaches to them and the
+preview says so.
+
+**Failures are isolated.** Vehicles insert in chunks of 25; if a chunk fails the
+rows are retried individually, so one bad record is reported rather than taking
+twenty-four good ones down with it.
+
+Opening `checked_in` events are inserted directly rather than through
+`vi_record_movement`. These rows are created as `in_stock`, so there is no
+status transition to keep in step, and one round trip per vehicle would be
+painful on a sheet of several hundred.
+
 ## Not creating the same customer twice
 
 Typing a phone number into the "New" owner section checks it against everyone

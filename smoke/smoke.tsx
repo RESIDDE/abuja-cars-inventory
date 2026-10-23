@@ -33,6 +33,8 @@ import { parseModelJson } from '@/lib/model-json'
 import { formatBytes, MAX_UPLOAD_BYTES, validatePhotoFile } from '@/lib/image'
 import { normalizePhotos } from '@/lib/normalize'
 import { findOwnersByPhone, phoneKey } from '@/lib/phone'
+import { autoMapColumns, normalizeHeader } from '@/lib/import/fields'
+import { importableRows, parseSheetDate, prepareRows } from '@/lib/import/prepare-rows'
 import { OwnerMatchHint } from '@/components/owners/owner-match-hint'
 import { planVinApply } from '@/lib/apply-vin-read'
 import {
@@ -490,6 +492,106 @@ const units: [string, unknown, unknown][] = [
   ],
   ['a half-typed number suggests nothing', findOwnersByPhone([owner], '080').length, 0],
 
+  // --- Sheet import -------------------------------------------------------
+  ['header normalisation', normalizeHeader('Phone No.'), 'phoneno'],
+  [
+    'auto-maps a realistic header row',
+    JSON.stringify(
+      Object.entries(
+        autoMapColumns(['Customer Name', 'Phone No.', 'Car Type', 'Model', 'Chassis Number', 'Year', 'Price (NGN)']),
+      ).sort(),
+    ),
+    JSON.stringify(
+      Object.entries({ ownerName: 0, ownerPhone: 1, make: 2, model: 3, vin: 4, year: 5, price: 6 }).sort(),
+    ),
+  ],
+  ['a column maps only once', Object.values(autoMapColumns(['Name', 'Name'])).length, 1],
+
+  // Dates, in the shapes a Nigerian yard's sheet actually holds them.
+  ['ISO date', parseSheetDate('2026-03-01').value, '2026-03-01'],
+  ['day-first slash date', parseSheetDate('14/03/2026').value, '2026-03-14'],
+  ['two-digit year', parseSheetDate('14/03/26').value, '2026-03-14'],
+  ['unambiguous day > 12 stays day-first', parseSheetDate('25/03/2026').value, '2026-03-25'],
+  ['month > 12 is swapped', parseSheetDate('03/25/2026').value, '2026-03-25'],
+  [
+    'ambiguous date warns about the assumption',
+    (parseSheetDate('03/04/2026').warning ?? '').includes('day first'),
+    true,
+  ],
+  ['Excel serial number', parseSheetDate('45717').value, '2025-03-01'],
+  ['Excel serial, second check', parseSheetDate('45730').value, '2025-03-14'],
+  ['blank date falls back to today', parseSheetDate('', new Date(2026, 9, 23)).value, '2026-10-23'],
+  [
+    'unreadable date warns rather than failing the row',
+    (parseSheetDate('next tuesday', new Date(2026, 9, 23)).warning ?? '').includes('used today'),
+    true,
+  ],
+]
+
+const importMapping = {
+  ownerName: 0, ownerPhone: 1, make: 2, model: 3, vin: 4, year: 5, price: 6,
+  keys: 7, bodyType: 8, intakeDate: 9,
+} as const
+
+const importRows = prepareRows({
+  rows: [
+    ['Musa Ibrahim', '0803 111 2222', 'Toyota', 'Corolla', 'JTDKB20U793094567', '2009', '₦12,500,000', '2', 'Sedan', '14/03/2026'],
+    ['', '', '', '', '', '', '', '', '', ''],
+    ['Grace Eze', '0701 999 8888', 'Honda', 'Accord', '1HGBH41JXMN109186', '1991', '4,500,000', '1', 'saloon', ''],
+    ['Copycat', '0805 000 1111', 'Kia', 'Rio', 'JTDKB20U793094567', '2015', '', '', '', ''],
+    ['Dup Of Existing', '0812 777 6666', 'Mazda', '3', 'WBA3A5C50DF123456', '2013', '', '', '', ''],
+    ['Bad Year', '0806 222 3333', 'Ford', 'Focus', '', '1776', '', '', '', ''],
+    ['Amaka Okonkwo Mistyped', '+234 803 111 2222', 'Lexus', 'RX', '', '', '', '', '', ''],
+  ],
+  mapping: importMapping,
+  existingOwners: [owner],
+  existingVins: new Set(['WBA3A5C50DF123456']),
+  today: new Date(2026, 9, 23),
+})
+
+const byLine = (n: number) => importRows.find((r) => r.lineNumber === n)!
+
+const moreUnits: [string, unknown, unknown][] = [
+  ['every row is prepared', importRows.length, 7],
+  ['row numbers match the sheet (header is row 1)', importRows[0].lineNumber, 2],
+
+  ['a good row has no errors', byLine(2).errors.length, 0],
+  ['price symbols and commas stripped', byLine(2).vehicle.price, 12500000],
+  ['day-first date applied', byLine(2).vehicle.intake_date, '2026-03-14'],
+  ['keys parsed', byLine(2).vehicle.keys_count, 2],
+
+  ['an empty row reports every missing required field', byLine(3).errors.length, 4],
+  ['"saloon" is a Sedan', byLine(4).vehicle.body_type, 'Sedan'],
+  ['missing date defaults to today', byLine(4).vehicle.intake_date, '2026-10-23'],
+  ['keys default to 1', byLine(4).vehicle.keys_count, 1],
+
+  [
+    'a VIN repeated inside the file is caught',
+    byLine(5).errors.some((e) => e.includes('Same VIN as row 2')),
+    true,
+  ],
+  [
+    'a VIN already in the database is caught',
+    byLine(6).errors.some((e) => e.includes('already on record')),
+    true,
+  ],
+  ['an impossible year blocks the row', byLine(7).errors.length > 0, true],
+  [
+    'a known phone attaches to the existing owner',
+    byLine(8).owner.existingOwnerId,
+    owner.id,
+  ],
+  [
+    'and warns that the name differs',
+    byLine(8).warnings.some((w) => w.includes('Amaka Okonkwo')),
+    true,
+  ],
+  ['only the clean rows import', importableRows(importRows).length, 3],
+]
+
+units.push(...moreUnits)
+
+const _unusedTail: [string, unknown, unknown][] = [
   [
     'an unreadable photo changes nothing',
     Object.keys(
@@ -501,6 +603,7 @@ const units: [string, unknown, unknown][] = [
     0,
   ],
 ]
+units.push(..._unusedTail)
 
 let failed = 0
 

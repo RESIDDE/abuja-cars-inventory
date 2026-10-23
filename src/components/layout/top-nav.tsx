@@ -1,4 +1,13 @@
-import { Car, LayoutDashboard, LogOut, Plus, Search, Settings, Users } from 'lucide-react'
+import {
+  Car,
+  LayoutDashboard,
+  LogOut,
+  Plus,
+  Search,
+  Settings,
+  Upload,
+  Users,
+} from 'lucide-react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 
 import { BrandMark } from '@/components/common/brand-mark'
@@ -95,6 +104,9 @@ export function TopNav() {
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => navigate('/vehicles?new=1')}>
                 <Plus /> Check in vehicle
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => navigate('/import')}>
+                <Upload /> Import a spreadsheet
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => navigate('/settings')}>
                 <Settings /> Settings

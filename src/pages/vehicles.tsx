@@ -1,6 +1,6 @@
 import * as React from 'react'
-import { Car, Plus, Search, X } from 'lucide-react'
-import { useSearchParams } from 'react-router-dom'
+import { Car, Plus, Search, Upload, X } from 'lucide-react'
+import { Link, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -160,15 +160,22 @@ export default function VehiclesPage() {
                 : `${filtered.length} of ${counts.all} record${counts.all === 1 ? '' : 's'}`}
             </p>
           </div>
-          <Button
-            size="lg"
-            onClick={() => {
-              setEditing(null)
-              setFormOpen(true)
-            }}
-          >
-            <Plus /> Check in vehicle
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="lg" asChild>
+              <Link to="/import">
+                <Upload /> Import
+              </Link>
+            </Button>
+            <Button
+              size="lg"
+              onClick={() => {
+                setEditing(null)
+                setFormOpen(true)
+              }}
+            >
+              <Plus /> Check in vehicle
+            </Button>
+          </div>
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">

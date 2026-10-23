@@ -130,6 +130,7 @@ receive your auth redirects.
 | `npm run typecheck` | `tsc -b` on its own                                       |
 | `npm run lint`      | oxlint over `src`                                         |
 | `npm run smoke`     | Renders the component layer with fixture data and asserts |
+| `npm run verify:live` | Runs the app's real queries against the live project (needs `.env`) |
 |                     | the formatting, normalising and error-mapping helpers      |
 
 ## Routes
@@ -174,6 +175,28 @@ assuming.
 The movement dialog falls back to a free-text field when nobody is listed yet,
 and always offers "Someone else…", so a cover shift is never a reason to leave
 the field blank.
+
+## A trap: two foreign keys to the same table
+
+`vi_vehicles` points at `vi_owners` twice — `owner_id` and `buyer_id`. The
+moment the second one existed, this embed stopped working:
+
+```ts
+'*, owner:vi_owners(*)'   // 300: more than one relationship was found
+```
+
+PostgREST will not guess which foreign key is meant, so the embed has to name
+it:
+
+```ts
+'*, owner:vi_owners!owner_id(*), buyer:vi_owners!buyer_id(*)'
+```
+
+Every unit test stayed green through that break, because they run against
+fixtures and never touch PostgREST. `npm run verify:live` exists for exactly
+this class of failure: it issues the app's real select strings, every column
+the client reads, and `vi_record_movement` with every argument, against the
+live project. **Run it after any migration.**
 
 ## Buyers are customers, not a separate list
 

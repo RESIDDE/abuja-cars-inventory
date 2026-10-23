@@ -9,7 +9,8 @@
     "typecheck": "tsc -b",
     "lint": "oxlint src",
     "smoke": "vite build --ssr smoke/smoke.tsx --outDir dist-smoke --logLevel error && node dist-smoke/smoke.js && vite build --ssr smoke/import-roundtrip.ts --outDir dist-smoke --logLevel error && node dist-smoke/import-roundtrip.js",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "verify:live": "vite build --ssr smoke/live-schema.ts --outDir dist-smoke --logLevel error && node dist-smoke/live-schema.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",

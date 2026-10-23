@@ -86,6 +86,8 @@ export interface Vehicle {
 /** A vehicle row joined to its owner, which is how the UI always reads them. */
 export interface VehicleWithOwner extends Vehicle {
   owner: Owner | null
+  /** The customer who bought it, when there is one on record. */
+  buyer: Owner | null
 }
 
 export interface VehicleEvent {

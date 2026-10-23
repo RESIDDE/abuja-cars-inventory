@@ -17,7 +17,10 @@ export const vehicleKeys = {
   detail: (id: string) => ['vehicle', id] as const,
 }
 
-const SELECT_WITH_OWNER = '*, owner:vi_owners(*)'
+// Both owner_id and buyer_id point at vi_owners, so the embed MUST name which
+// foreign key it means — PostgREST refuses to guess and returns a 300.
+const SELECT_WITH_OWNER =
+  '*, owner:vi_owners!owner_id(*), buyer:vi_owners!buyer_id(*)'
 
 export interface VehicleInput {
   make: string

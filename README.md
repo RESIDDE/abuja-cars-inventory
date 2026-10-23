@@ -198,6 +198,25 @@ this class of failure: it issues the app's real select strings, every column
 the client reads, and `vi_record_movement` with every argument, against the
 live project. **Run it after any migration.**
 
+## Ranking customers
+
+The customers page lists the busiest first — alphabetical stops being useful
+the moment the list is longer than a screen. An **Order by** toggle switches
+back to A–Z.
+
+The score follows the tab you are on: **Buyers** ranks on purchases alone,
+**Storing** on vehicles held, **Everyone** on the two together. Ranking the
+Buyers list by a combined total would put somebody who has bought nothing above
+somebody who has bought three.
+
+Ties share a position — two customers with four cars each are both #1, not one
+of them arbitrarily second — and break alphabetically so the order never
+shuffles between renders. Anybody with no vehicles gets no rank at all rather
+than a meaningless one. The top three are marked with a trophy.
+
+The logic is pure and in [src/lib/rank-customers.ts](src/lib/rank-customers.ts),
+so the ordering is tested without a database.
+
 ## Sold is terminal
 
 A sold vehicle cannot be released or checked back in. This is enforced in

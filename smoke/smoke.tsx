@@ -34,6 +34,7 @@ import { formatBytes, MAX_UPLOAD_BYTES, validatePhotoFile } from '@/lib/image'
 import { formatMileage } from '@/lib/format'
 import { normalizePhotos } from '@/lib/normalize'
 import { findOwnersByPhone, phoneKey } from '@/lib/phone'
+import { rankCustomers } from '@/lib/rank-customers'
 import { autoMapColumns, normalizeHeader } from '@/lib/import/fields'
 import { importableRows, parseSheetDate, prepareRows } from '@/lib/import/prepare-rows'
 import { OwnerMatchHint } from '@/components/owners/owner-match-hint'
@@ -209,6 +210,7 @@ const tree = (
       ))}
       <OwnerCard
         owner={owner}
+        rank={1}
         vehicleCount={2}
         purchases={[vehicles[1]]}
         onEdit={noop}
@@ -264,11 +266,49 @@ const checks: [string, boolean][] = [
   ['customer card lists what they bought', html.includes('Bought from you')],
   ['purchase shows its sale price', html.includes('7,250,000')],
   ['customer card counts both relationships', html.includes('2 stored') && html.includes('1 bought')],
+  ['customer card shows its rank', html.includes('#1 by vehicles')],
   ['brand mark points at the logo', html.includes('/abujacar-logo.png')],
   ['owner match hint names the owner', html.includes('That number is already on record')],
   ['owner match hint offers the switch', html.includes('Use this owner')],
   ['brand mark is decorative for screen readers', html.includes('aria-hidden="true"')],
 ]
+
+const customer = (id: string, name: string): Owner => ({
+  ...owner,
+  id,
+  full_name: name,
+})
+
+// stored / bought per person
+const rankPeople = [
+  customer('c1', 'Musa (4)'),
+  customer('c2', 'Grace (3)'),
+  customer('c3', 'Chidi (5)'),
+  customer('c4', 'Tunde (1)'),
+  customer('c5', 'Idle (0)'),
+]
+const storedCounts = { c1: 4, c2: 0, c3: 2, c4: 1, c5: 0 }
+const boughtCounts = { c1: 0, c2: 3, c3: 3, c4: 0, c5: 0 }
+
+const rankTotals = rankCustomers({
+  owners: rankPeople, storedCounts, boughtCounts, scope: 'all', by: 'activity',
+})
+const rankBuyers = rankCustomers({
+  owners: rankPeople, storedCounts, boughtCounts, scope: 'buyers', by: 'activity',
+})
+const rankStoring = rankCustomers({
+  owners: rankPeople, storedCounts, boughtCounts, scope: 'storing', by: 'activity',
+})
+const rankByName = rankCustomers({
+  owners: rankPeople, storedCounts, boughtCounts, scope: 'all', by: 'name',
+})
+const rankTies = rankCustomers({
+  owners: [customer('t1', 'A'), customer('t2', 'B'), customer('t3', 'C')],
+  storedCounts: { t1: 4, t2: 4, t3: 1 },
+  boughtCounts: {},
+  scope: 'all',
+  by: 'activity',
+})
 
 // Pure-function spot checks, including the edge cases that bite in the yard.
 const units: [string, unknown, unknown][] = [
@@ -538,6 +578,29 @@ const units: [string, unknown, unknown][] = [
   ['mileage keeps its unit', formatMileage(84000, 'mi'), '84,000 mi'],
   ['mileage defaults to km', formatMileage(120000, null), '120,000 km'],
   ['no mileage recorded', formatMileage(null, 'km'), '—'],
+
+  // --- Customer ranking -----------------------------------------------------
+  ['busiest customer first', rankTotals.map((r) => r.owner.full_name).join('|'),
+    'Chidi (5)|Musa (4)|Grace (3)|Tunde (1)|Idle (0)'],
+  ['rank numbers assigned in order', rankTotals.map((r) => r.rank).join(','), '1,2,3,4,'],
+  ['nobody with zero vehicles is ranked', rankTotals[4].rank, null],
+  [
+    // Grace and Chidi both bought 3, so they tie and break alphabetically.
+    // Musa is top on the Everyone tab but has bought nothing, so he drops.
+    'the Buyers tab ranks on purchases alone',
+    rankBuyers.map((r) => r.owner.full_name).join('|'),
+    'Chidi (5)|Grace (3)|Idle (0)|Musa (4)|Tunde (1)',
+  ],
+  ['tied buyers share first place', rankBuyers.slice(0, 2).map((r) => r.rank).join(','), '1,1'],
+  [
+    'the Storing tab ranks on vehicles held',
+    rankStoring.map((r) => r.owner.full_name).join('|'),
+    'Musa (4)|Chidi (5)|Tunde (1)|Grace (3)|Idle (0)',
+  ],
+  ['equal scores share a position', rankTies.map((r) => r.rank).join(','), '1,1,3'],
+  ['sorting by name ignores the counts', rankByName.map((r) => r.owner.full_name).join('|'),
+    'Chidi (5)|Grace (3)|Idle (0)|Musa (4)|Tunde (1)'],
+  ['sorting by name assigns no rank', rankByName.every((r) => r.rank === null), true],
 
   // --- Sheet import -------------------------------------------------------
   ['header normalisation', normalizeHeader('Phone No.'), 'phoneno'],

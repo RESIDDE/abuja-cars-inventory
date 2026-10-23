@@ -1,9 +1,10 @@
-import { Car, Mail, MapPin, Pencil, Phone, ShoppingBag, Trash2 } from 'lucide-react'
+import { Car, Mail, MapPin, Pencil, Phone, ShoppingBag, Trash2, Trophy } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatDate, formatNaira, initialsOf, telHref, vehicleTitle } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { Owner, VehicleWithOwner } from '@/types/database'
 
 interface OwnerCardProps {
@@ -11,6 +12,8 @@ interface OwnerCardProps {
   vehicleCount: number
   /** Vehicles this customer has bought from the yard. */
   purchases?: VehicleWithOwner[]
+  /** Position in the current ranking; null when there is nothing to rank by. */
+  rank?: number | null
   onEdit: (owner: Owner) => void
   onDelete: (owner: Owner) => void
 }
@@ -19,6 +22,7 @@ export function OwnerCard({
   owner,
   vehicleCount,
   purchases = [],
+  rank = null,
   onEdit,
   onDelete,
 }: OwnerCardProps) {
@@ -32,8 +36,24 @@ export function OwnerCard({
   return (
     <article className="glass-tile-solid flex flex-col gap-4 rounded-[1.75rem] p-5">
       <header className="flex items-start gap-3">
-        <span className="grid size-11 shrink-0 place-items-center rounded-full border border-white/50 bg-white/55 text-sm font-semibold">
-          {initialsOf(owner.full_name)}
+        <span className="relative shrink-0">
+          <span className="grid size-11 place-items-center rounded-full border border-white/50 bg-white/55 text-sm font-semibold">
+            {initialsOf(owner.full_name)}
+          </span>
+          {rank !== null ? (
+            <span
+              className={cn(
+                'absolute -bottom-1 -left-1 grid min-w-5 place-items-center rounded-full border border-white/60 px-1 text-[0.6rem] font-semibold tabular-nums',
+                rank <= 3
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-white/85 text-muted-foreground',
+              )}
+              title={`#${rank} by vehicles`}
+            >
+              {rank <= 3 ? <Trophy className="size-2.5" /> : null}
+              {rank}
+            </span>
+          ) : null}
         </span>
         <div className="min-w-0 flex-1">
           <h3 className="truncate text-base font-semibold tracking-tight">

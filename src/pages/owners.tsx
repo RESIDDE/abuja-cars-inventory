@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Plus, Search, ShoppingBag, Users, X } from 'lucide-react'
+import { ArrowDownWideNarrow, ArrowDownAZ, Plus, Search, ShoppingBag, Users, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -23,6 +23,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDeleteOwner, useOwnerVehicleCounts, useOwners } from '@/hooks/use-owners'
 import { useVehicles } from '@/hooks/use-vehicles'
 import { describeDbError } from '@/lib/errors'
+import { rankCustomers } from '@/lib/rank-customers'
+import { cn } from '@/lib/utils'
 import type { Owner } from '@/types/database'
 
 export default function OwnersPage() {
@@ -33,6 +35,9 @@ export default function OwnersPage() {
 
   const [query, setQuery] = React.useState('')
   const [tab, setTab] = React.useState<'all' | 'storing' | 'buyers'>('all')
+  // Busiest first by default — alphabetical stops being useful the moment the
+  // list is longer than a screen.
+  const [sortBy, setSortBy] = React.useState<'activity' | 'name'>('activity')
   const [formOpen, setFormOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<Owner | null>(null)
   const [pendingDelete, setPendingDelete] = React.useState<Owner | null>(null)
@@ -66,6 +71,24 @@ export default function OwnersPage() {
         .includes(needle)
     })
   }, [owners, query, tab, counts, purchasesByCustomer])
+
+  const boughtCounts = React.useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const [id, list] of purchasesByCustomer) out[id] = list.length
+    return out
+  }, [purchasesByCustomer])
+
+  const ranked = React.useMemo(
+    () =>
+      rankCustomers({
+        owners: filtered,
+        storedCounts: counts,
+        boughtCounts,
+        scope: tab,
+        by: sortBy,
+      }),
+    [filtered, counts, boughtCounts, tab, sortBy],
+  )
 
   const buyerCount = purchasesByCustomer.size
   const storingCount = owners.filter((o) => (counts[o.id] ?? 0) > 0).length
@@ -128,7 +151,35 @@ export default function OwnersPage() {
           </TabsList>
         </Tabs>
 
-        <div className="relative mt-4">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          <span className="text-xs text-muted-foreground">Order by</span>
+          <div className="flex items-center gap-1 rounded-full border border-white/35 bg-white/25 p-1">
+            {(
+              [
+                ['activity', 'Most vehicles', ArrowDownWideNarrow],
+                ['name', 'Name', ArrowDownAZ],
+              ] as const
+            ).map(([value, label, Icon]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setSortBy(value)}
+                aria-pressed={sortBy === value}
+                className={cn(
+                  'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
+                  sortBy === value
+                    ? 'pill-nav-active text-foreground'
+                    : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                <Icon className="size-3.5" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative mt-3">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -194,10 +245,11 @@ export default function OwnersPage() {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((owner) => (
+          {ranked.map(({ owner, rank }) => (
             <OwnerCard
               key={owner.id}
               owner={owner}
+              rank={rank}
               vehicleCount={counts[owner.id] ?? 0}
               purchases={purchasesByCustomer.get(owner.id) ?? []}
               onEdit={(o) => {

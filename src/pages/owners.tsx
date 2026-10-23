@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { Plus, Search, Users, X } from 'lucide-react'
+import { Plus, Search, ShoppingBag, Users, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { EmptyState } from '@/components/common/empty-state'
@@ -19,31 +19,56 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useDeleteOwner, useOwnerVehicleCounts, useOwners } from '@/hooks/use-owners'
+import { useVehicles } from '@/hooks/use-vehicles'
 import { describeDbError } from '@/lib/errors'
 import type { Owner } from '@/types/database'
 
 export default function OwnersPage() {
   const { data: owners = [], isLoading, isError, error, refetch } = useOwners()
   const { data: counts = {} } = useOwnerVehicleCounts()
+  const { data: vehicles = [] } = useVehicles()
   const deleteOwner = useDeleteOwner()
 
   const [query, setQuery] = React.useState('')
+  const [tab, setTab] = React.useState<'all' | 'storing' | 'buyers'>('all')
   const [formOpen, setFormOpen] = React.useState(false)
   const [editing, setEditing] = React.useState<Owner | null>(null)
   const [pendingDelete, setPendingDelete] = React.useState<Owner | null>(null)
 
+  // Buyers are the same customer records, reached through a different
+  // relationship, so they are grouped here rather than fetched separately.
+  const purchasesByCustomer = React.useMemo(() => {
+    const map = new Map<string, typeof vehicles>()
+    for (const vehicle of vehicles) {
+      if (vehicle.status !== 'sold' || !vehicle.buyer_id) continue
+      const list = map.get(vehicle.buyer_id) ?? []
+      list.push(vehicle)
+      map.set(vehicle.buyer_id, list)
+    }
+    for (const list of map.values()) {
+      list.sort((a, b) => (b.sold_date ?? '').localeCompare(a.sold_date ?? ''))
+    }
+    return map
+  }, [vehicles])
+
   const filtered = React.useMemo(() => {
     const needle = query.trim().toLowerCase()
-    if (!needle) return owners
-    return owners.filter((owner) =>
-      [owner.full_name, owner.phone_primary, owner.phone_secondary]
+    return owners.filter((owner) => {
+      if (tab === 'storing' && (counts[owner.id] ?? 0) === 0) return false
+      if (tab === 'buyers' && !purchasesByCustomer.has(owner.id)) return false
+      if (!needle) return true
+      return [owner.full_name, owner.phone_primary, owner.phone_secondary]
         .filter(Boolean)
         .join(' ')
         .toLowerCase()
-        .includes(needle),
-    )
-  }, [owners, query])
+        .includes(needle)
+    })
+  }, [owners, query, tab, counts, purchasesByCustomer])
+
+  const buyerCount = purchasesByCustomer.size
+  const storingCount = owners.filter((o) => (counts[o.id] ?? 0) > 0).length
 
   const pendingCount = pendingDelete ? (counts[pendingDelete.id] ?? 0) : 0
 
@@ -85,7 +110,25 @@ export default function OwnersPage() {
           </Button>
         </div>
 
-        <div className="relative mt-6">
+        <Tabs
+          value={tab}
+          onValueChange={(value) => setTab(value as typeof tab)}
+          className="mt-6"
+        >
+          <TabsList>
+            <TabsTrigger value="all">
+              Everyone <span className="ml-1.5 opacity-60">{owners.length}</span>
+            </TabsTrigger>
+            <TabsTrigger value="storing">
+              Storing <span className="ml-1.5 opacity-60">{storingCount}</span>
+            </TabsTrigger>
+            <TabsTrigger value="buyers">
+              Buyers <span className="ml-1.5 opacity-60">{buyerCount}</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        <div className="relative mt-4">
           <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={query}
@@ -117,12 +160,20 @@ export default function OwnersPage() {
         </div>
       ) : filtered.length === 0 ? (
         <EmptyState
-          icon={Users}
-          title={owners.length === 0 ? 'No owners yet' : 'Nothing matches that'}
+          icon={tab === 'buyers' ? ShoppingBag : Users}
+          title={
+            tab === 'buyers'
+              ? 'Nobody has bought a vehicle yet'
+              : owners.length === 0
+                ? 'No customers yet'
+                : 'Nothing matches that'
+          }
           description={
-            owners.length === 0
-              ? 'Add an owner, or create one straight from the vehicle check-in form.'
-              : 'Try a different name or phone number.'
+            tab === 'buyers'
+              ? 'Record a sale from a vehicle card and the buyer will appear here with what they bought.'
+              : owners.length === 0
+                ? 'Add a customer, or create one straight from the vehicle check-in form.'
+                : 'Try a different name or phone number.'
           }
           action={
             owners.length === 0 ? (
@@ -148,6 +199,7 @@ export default function OwnersPage() {
               key={owner.id}
               owner={owner}
               vehicleCount={counts[owner.id] ?? 0}
+              purchases={purchasesByCustomer.get(owner.id) ?? []}
               onEdit={(o) => {
                 setEditing(o)
                 setFormOpen(true)

@@ -37,6 +37,7 @@ export interface MovementInput {
   signaturePath?: string | null
   /** Only meaningful on a sale. */
   salePrice?: number | null
+  buyerId?: string | null
 }
 
 /**
@@ -59,6 +60,7 @@ export function useRecordMovement() {
         p_keys_count: input.keysCount ?? null,
         p_signature_path: input.signaturePath ?? null,
         p_sale_price: input.salePrice ?? null,
+        p_buyer_id: input.buyerId ?? null,
       })
       if (error) throw error
       return data as VehicleEvent

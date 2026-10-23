@@ -28,6 +28,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import {
+  CustomerPicker,
+  customerProblems,
+  emptyCustomer,
+} from '@/components/owners/customer-picker'
+import type { CustomerDraft } from '@/components/owners/customer-picker'
+import { useCreateOwner, useOwners } from '@/hooks/use-owners'
 import { useStaffMembers } from '@/hooks/use-staff-members'
 import { useRecordMovement, useVehicleEvents } from '@/hooks/use-vehicle-events'
 import { describeDbError } from '@/lib/errors'
@@ -86,6 +93,9 @@ export function MovementDialog({
   )
   const [staffOther, setStaffOther] = React.useState(false)
   const [salePrice, setSalePrice] = React.useState<number | null>(null)
+  const { data: customers = [] } = useOwners()
+  const createCustomer = useCreateOwner()
+  const [buyer, setBuyer] = React.useState<CustomerDraft>(emptyCustomer)
 
   const signature = React.useRef<SignaturePadHandle>(null)
   const [signed, setSigned] = React.useState(false)
@@ -115,14 +125,51 @@ export function MovementDialog({
     signature.current?.clear()
     setSigned(false)
     setSalePrice(vehicle?.sale_price ?? vehicle?.price ?? null)
+    setBuyer(
+      vehicle?.buyer_id
+        ? { ...emptyCustomer(), mode: 'existing', customerId: vehicle.buyer_id }
+        : emptyCustomer(),
+    )
   }, [open, form, releasing, heldKeys, lastRelease, vehicle])
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!vehicle) return
+
+    // A sale without a buyer on record is the thing that makes the customer
+    // list useless later, so it is required here rather than optional.
+    if (selling) {
+      const problems = customerProblems(buyer, true)
+      if (problems.length > 0) {
+        toast.error(problems[0])
+        return
+      }
+    }
+
     try {
       // Uploaded before the movement is recorded, so the path can go into the
       // same transaction as the custody change rather than being bolted on
       // afterwards.
+      // The buyer is created before the sale is recorded, so the movement
+      // carries the customer's id rather than only their name.
+      let buyerId: string | null = null
+      let buyerName = form.getValues('recipientName')
+      if (selling) {
+        if (buyer.mode === 'new') {
+          const created = await createCustomer.mutateAsync({
+            full_name: buyer.name,
+            phone_primary: buyer.phone,
+            phone_secondary: buyer.phone2,
+            email: buyer.email,
+          })
+          buyerId = created.id
+          buyerName = created.full_name
+        } else {
+          buyerId = buyer.customerId
+          buyerName =
+            customers.find((c) => c.id === buyer.customerId)?.full_name || buyerName
+        }
+      }
+
       let signaturePath: string | null = null
       const blob = await signature.current?.toBlob()
       if (blob) signaturePath = await uploadSignature(vehicle.id, blob)
@@ -133,11 +180,12 @@ export function MovementDialog({
         // datetime-local has no zone; the browser's own zone is the right one.
         occurredAt: new Date(values.occurredAt).toISOString(),
         staffName: values.staffName,
-        recipientName: values.recipientName,
+        recipientName: selling ? buyerName : values.recipientName,
         notes: values.notes,
         keysCount: keys,
         signaturePath,
         salePrice: selling ? salePrice : null,
+        buyerId,
       })
       toast.success(
         selling ? 'Sale recorded' : releasing ? 'Vehicle released' : 'Vehicle checked back in',
@@ -148,7 +196,8 @@ export function MovementDialog({
     }
   })
 
-  const busy = form.formState.isSubmitting || recordMovement.isPending
+  const busy =
+    form.formState.isSubmitting || recordMovement.isPending || createCustomer.isPending
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -268,17 +317,26 @@ export function MovementDialog({
             )}
           </Field>
 
-          <Field
-            label={selling ? 'Sold to' : releasing ? 'Released to' : 'Received from'}
-            htmlFor="recipientName"
-            hint="Optional"
-          >
-            <Input
-              id="recipientName"
-              placeholder={vehicle?.owner?.full_name ?? ''}
-              {...form.register('recipientName')}
+          {selling ? (
+            <CustomerPicker
+              label="Sold to"
+              customers={customers}
+              value={buyer}
+              onChange={setBuyer}
             />
-          </Field>
+          ) : (
+            <Field
+              label={releasing ? 'Released to' : 'Received from'}
+              htmlFor="recipientName"
+              hint="Optional"
+            >
+              <Input
+                id="recipientName"
+                placeholder={vehicle?.owner?.full_name ?? ''}
+                {...form.register('recipientName')}
+              />
+            </Field>
+          )}
 
           <Field label="Notes" htmlFor="movementNotes" hint="Optional">
             <Textarea id="movementNotes" rows={3} {...form.register('notes')} />
@@ -296,7 +354,11 @@ export function MovementDialog({
               ref={signature}
               onChange={setSigned}
               hint={
-                form.watch('recipientName')?.trim() ||
+                (selling
+                  ? buyer.mode === 'new'
+                    ? buyer.name
+                    : customers.find((c) => c.id === buyer.customerId)?.full_name
+                  : form.watch('recipientName')) ||
                 vehicle?.owner?.full_name ||
                 'Sign here'
               }

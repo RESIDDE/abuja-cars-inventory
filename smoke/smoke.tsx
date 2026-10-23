@@ -116,12 +116,13 @@ const vehicles: VehicleWithOwner[] = [
     belongings: [],
     photos: [],
     price: null,
-    status: 'released',
+    status: 'sold',
     intake_date: '2026-10-01',
     released_date: '2026-10-15',
-    sold_date: null,
-    sale_price: null,
-    buyer_name: null,
+    sold_date: '2026-10-15',
+    sale_price: 7_250_000,
+    buyer_name: 'Chidi Obi',
+    buyer_id: 'o1',
     notes: null,
     created_at: '2026-10-01T10:00:00Z',
     updated_at: '2026-10-15T10:00:00Z',
@@ -204,7 +205,13 @@ const tree = (
           onDelete={noop}
         />
       ))}
-      <OwnerCard owner={owner} vehicleCount={2} onEdit={noop} onDelete={noop} />
+      <OwnerCard
+        owner={owner}
+        vehicleCount={2}
+        purchases={[vehicles[1]]}
+        onEdit={noop}
+        onDelete={noop}
+      />
       <MovementTimeline events={events} />
       <MovementTimeline events={[]} />
       <BelongingsEditor value={vehicles[0].belongings} onChange={noop} />
@@ -230,7 +237,7 @@ const checks: [string, boolean][] = [
   ['vehicle title', html.includes('2016 Toyota Corolla')],
   ['vin shown', html.includes('JTDBR32E030123456')],
   ['naira formatting', html.includes('12,500,000')],
-  ['status badge', html.includes('In Stock') && html.includes('Released')],
+  ['status badge', html.includes('In Stock') && html.includes('Sold')],
   ['owner tel link', html.includes('tel:08031112222')],
   ['owner mailto', html.includes('mailto:amaka@example.com')],
   ['timeline recipient label', html.includes('Released to')],
@@ -246,6 +253,9 @@ const checks: [string, boolean][] = [
   ['card shows the mileage with its unit', html.includes('84,000 mi')],
   ['card shows the condition', html.includes('Used')],
   ['card offers a Sold button', html.includes('Sold')],
+  ['customer card lists what they bought', html.includes('Bought from you')],
+  ['purchase shows its sale price', html.includes('7,250,000')],
+  ['customer card counts both relationships', html.includes('2 stored') && html.includes('1 bought')],
   ['brand mark points at the logo', html.includes('/abujacar-logo.png')],
   ['owner match hint names the owner', html.includes('That number is already on record')],
   ['owner match hint offers the switch', html.includes('Use this owner')],

@@ -175,6 +175,27 @@ The movement dialog falls back to a free-text field when nobody is listed yet,
 and always offers "Someone else…", so a cover shift is never a reason to leave
 the field blank.
 
+## Buyers are customers, not a separate list
+
+A buyer is a row in `vi_owners` like anybody else, linked from the vehicle by
+`buyer_id`. The same person may store a car with you *and* buy one, with one
+name and one phone number either way — and the phone matching then works across
+both relationships, so recording a sale to an existing customer does not create
+a second copy of them.
+
+`buyer_id` is **`on delete set null`**, unlike `owner_id` which cascades.
+Removing a customer must never delete a vehicle somebody bought; it only forgets
+who bought it, and `buyer_name` is kept alongside so the sale still reads.
+Verified: deleting a buyer leaves the vehicle and its name intact, while
+deleting the owner still cascades.
+
+The customers page has **Everyone / Storing / Buyers** tabs, each card counts
+both relationships, and a buyer's card lists the vehicles they bought with the
+price and date. The dashboard has a matching **Sold** tab.
+
+Recording a sale **requires** a buyer — existing or new. A sale with nothing but
+a typed name is what makes the customer list useless six months later.
+
 ## Selling a vehicle
 
 **Sold** sits alongside In Stock and Released as a third state, not a flag. A

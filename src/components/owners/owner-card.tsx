@@ -1,19 +1,27 @@
-import { Car, Mail, MapPin, Pencil, Phone, Trash2 } from 'lucide-react'
+import { Car, Mail, MapPin, Pencil, Phone, ShoppingBag, Trash2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { initialsOf, telHref } from '@/lib/format'
-import type { Owner } from '@/types/database'
+import { formatDate, formatNaira, initialsOf, telHref, vehicleTitle } from '@/lib/format'
+import type { Owner, VehicleWithOwner } from '@/types/database'
 
 interface OwnerCardProps {
   owner: Owner
   vehicleCount: number
+  /** Vehicles this customer has bought from the yard. */
+  purchases?: VehicleWithOwner[]
   onEdit: (owner: Owner) => void
   onDelete: (owner: Owner) => void
 }
 
-export function OwnerCard({ owner, vehicleCount, onEdit, onDelete }: OwnerCardProps) {
+export function OwnerCard({
+  owner,
+  vehicleCount,
+  purchases = [],
+  onEdit,
+  onDelete,
+}: OwnerCardProps) {
   const navigate = useNavigate()
 
   const stop = (handler: () => void) => (event: React.MouseEvent) => {
@@ -31,10 +39,18 @@ export function OwnerCard({ owner, vehicleCount, onEdit, onDelete }: OwnerCardPr
           <h3 className="truncate text-base font-semibold tracking-tight">
             {owner.full_name}
           </h3>
-          <Badge variant="muted" className="mt-1.5">
-            <Car className="size-3" />
-            {vehicleCount} vehicle{vehicleCount === 1 ? '' : 's'}
-          </Badge>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <Badge variant="muted">
+              <Car className="size-3" />
+              {vehicleCount} stored
+            </Badge>
+            {purchases.length > 0 ? (
+              <Badge variant="inStock">
+                <ShoppingBag className="size-3" />
+                {purchases.length} bought
+              </Badge>
+            ) : null}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-1">
           <Button
@@ -92,6 +108,35 @@ export function OwnerCard({ owner, vehicleCount, onEdit, onDelete }: OwnerCardPr
           </p>
         ) : null}
       </div>
+
+      {purchases.length > 0 ? (
+        <div className="rounded-2xl border border-white/40 bg-white/25 p-3">
+          <p className="mb-2 text-[0.7rem] uppercase tracking-wide text-muted-foreground">
+            Bought from you
+          </p>
+          <ul className="space-y-1.5">
+            {purchases.map((vehicle) => (
+              <li key={vehicle.id}>
+                <button
+                  type="button"
+                  onClick={stop(() => navigate(`/vehicles/${vehicle.id}`))}
+                  className="flex w-full items-center justify-between gap-2 rounded-xl px-2 py-1.5 text-left text-xs transition-colors hover:bg-white/55"
+                >
+                  <span className="min-w-0 flex-1 truncate">
+                    {vehicleTitle(vehicle)}
+                    <span className="block text-[0.7rem] text-muted-foreground">
+                      {formatDate(vehicle.sold_date)}
+                    </span>
+                  </span>
+                  <span className="shrink-0 font-semibold">
+                    {formatNaira(vehicle.sale_price ?? vehicle.price)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
 
       {vehicleCount > 0 ? (
         <Button

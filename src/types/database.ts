@@ -76,6 +76,8 @@ export interface Vehicle {
   sold_date: string | null
   sale_price: number | null
   buyer_name: string | null
+  /** Customer record of the buyer, in vi_owners. Null if only a name was taken. */
+  buyer_id: string | null
   notes: string | null
   created_at: string
   updated_at: string

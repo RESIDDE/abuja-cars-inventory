@@ -79,6 +79,7 @@ export default function DashboardPage() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="in_stock">In Stock</TabsTrigger>
           <TabsTrigger value="released">Released</TabsTrigger>
+          <TabsTrigger value="sold">Sold</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -115,6 +116,16 @@ export default function DashboardPage() {
             onSeeAll={() => navigate('/vehicles?status=released')}
           />
         </TabsContent>
+
+        <TabsContent value="sold">
+          <VehicleList
+            vehicles={sold}
+            emptyTitle="Nothing sold yet"
+            emptyDescription="Record a sale from a vehicle card and it will appear here."
+            onSeeAll={() => navigate('/vehicles?status=sold')}
+            showSale
+          />
+        </TabsContent>
       </Tabs>
 
       <VehicleFormDialog open={formOpen} onOpenChange={setFormOpen} />
@@ -127,11 +138,13 @@ function VehicleList({
   emptyTitle,
   emptyDescription,
   onSeeAll,
+  showSale = false,
 }: {
   vehicles: VehicleWithOwner[]
   emptyTitle: string
   emptyDescription: string
   onSeeAll: () => void
+  showSale?: boolean
 }) {
   const navigate = useNavigate()
 
@@ -152,20 +165,26 @@ function VehicleList({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{vehicleTitle(vehicle)}</p>
                 <p className="truncate text-xs text-muted-foreground">
-                  {vehicle.owner?.full_name ?? 'Unknown owner'}
+                  {showSale
+                    ? `Sold to ${vehicle.buyer_name ?? 'an unnamed buyer'}`
+                    : (vehicle.owner?.full_name ?? 'Unknown owner')}
                   {vehicle.plate_number ? ` · ${vehicle.plate_number}` : ''}
                 </p>
               </div>
               <Badge variant="muted" className="shrink-0">
                 In {formatDate(vehicle.intake_date)}
               </Badge>
-              {vehicle.released_date ? (
+              {showSale && vehicle.sold_date ? (
+                <Badge variant="muted" className="shrink-0">
+                  Sold {formatDate(vehicle.sold_date)}
+                </Badge>
+              ) : vehicle.released_date ? (
                 <Badge variant="muted" className="shrink-0">
                   Out {formatDate(vehicle.released_date)}
                 </Badge>
               ) : null}
               <p className="shrink-0 text-sm font-semibold tracking-tight">
-                {formatNaira(vehicle.price)}
+                {formatNaira(showSale ? (vehicle.sale_price ?? vehicle.price) : vehicle.price)}
               </p>
             </button>
           </li>

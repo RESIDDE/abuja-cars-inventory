@@ -58,5 +58,11 @@ export const REGISTRATION_SHORT: Record<RegistrationOrigin, string> = {
 
 export const MILEAGE_UNITS: MileageUnit[] = ['km', 'mi']
 
+/**
+ * Most pictures a vehicle record will hold. Matched by a check constraint on
+ * vi_vehicles.photos, so this is a convenience rather than the control.
+ */
+export const MAX_VEHICLE_PHOTOS = 5
+
 /** How far back the dashboard charts look. */
 export const CHART_DAYS = 30

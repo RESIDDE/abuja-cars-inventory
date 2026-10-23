@@ -402,9 +402,9 @@ It suggests; it never blocks. Two people genuinely do share a number sometimes.
 
 ## Pictures of the vehicle
 
-The check-in form takes up to six pictures of the car, below the owner section.
-Each one is capped at 5 MB and **converted to WebP in the browser** before it is
-uploaded — a 4 MB phone photo typically lands around 300 KB, and the form shows
+The check-in form takes up to **five** pictures of the car, below the owner
+section. Each one is capped at 5 MB and **converted to WebP in the browser**
+before it is uploaded — a 4 MB phone photo typically lands around 300 KB, and the form shows
 the before-and-after so the saving is visible.
 
 They go to a **private** `vehicle-photos` bucket, not a public one: these are
@@ -418,6 +418,11 @@ nothing behind in the bucket. If a save fails after the pictures went up, they
 are removed again. If the pictures fail but the vehicle saved, the check-in
 stands and the toast says what did not upload — the record matters more than the
 photographs.
+
+Both limits are enforced in the database as well as the browser: the bucket
+rejects anything that is not `image/webp` or over 5 MB, and a check constraint
+on `vi_vehicles.photos` rejects a sixth picture. The browser checks stop
+somebody picking one; these stop anything else writing one.
 
 Access follows the same staff rule as everything else: four policies on
 `storage.objects` scoped to `vi_is_staff()`.

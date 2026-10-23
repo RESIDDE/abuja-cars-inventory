@@ -32,6 +32,7 @@ import { normalizeBelongings, normalizeVehicle } from '@/lib/normalize'
 import { parseModelJson } from '@/lib/model-json'
 import { formatBytes, MAX_UPLOAD_BYTES, validatePhotoFile } from '@/lib/image'
 import { formatMileage } from '@/lib/format'
+import { MAX_VEHICLE_PHOTOS } from '@/lib/constants'
 import { normalizePhotos } from '@/lib/normalize'
 import { findOwnersByPhone, phoneKey } from '@/lib/phone'
 import { rankCustomers } from '@/lib/rank-customers'
@@ -510,6 +511,8 @@ const units: [string, unknown, unknown][] = [
   ['formatBytes KB', formatBytes(310_000), '303 KB'],
   ['formatBytes bytes', formatBytes(512), '512 B'],
   ['5 MB limit matches the bucket', MAX_UPLOAD_BYTES, 5_242_880],
+  // Mirrors the check constraint on vi_vehicles.photos.
+  ['at most five pictures per vehicle', MAX_VEHICLE_PHOTOS, 5],
   [
     'oversize file rejected with its size',
     validatePhotoFile({ type: 'image/jpeg', size: 6_000_000, name: 'big.jpg' }),

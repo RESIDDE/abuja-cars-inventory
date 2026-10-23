@@ -5,11 +5,10 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { usePhotoUrls } from '@/hooks/use-photo-urls'
+import { MAX_VEHICLE_PHOTOS } from '@/lib/constants'
 import { fileToWebp, formatBytes, MAX_UPLOAD_BYTES } from '@/lib/image'
 import type { PreparedPhoto } from '@/lib/image'
 import type { VehiclePhoto } from '@/types/database'
-
-const MAX_PHOTOS = 6
 
 interface VehiclePhotoUploadProps {
   /** Newly chosen pictures, converted but not yet uploaded. */
@@ -43,9 +42,9 @@ export function VehiclePhotoUpload({
 
   const addFiles = async (files: FileList | null) => {
     if (!files?.length) return
-    const room = MAX_PHOTOS - total
+    const room = MAX_VEHICLE_PHOTOS - total
     if (room <= 0) {
-      toast.error(`That is the most pictures a record will hold (${MAX_PHOTOS}).`)
+      toast.error(`A record holds ${MAX_VEHICLE_PHOTOS} pictures at most.`)
       return
     }
 
@@ -87,13 +86,13 @@ export function VehiclePhotoUpload({
           Pictures of the vehicle
         </Label>
         <span className="text-[0.7rem] text-muted-foreground">
-          {total}/{MAX_PHOTOS}
+          {total}/{MAX_VEHICLE_PHOTOS}
         </span>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        Up to {formatBytes(MAX_UPLOAD_BYTES)} each. Every picture is converted to WebP
-        before it is stored, so it takes a fraction of the space.
+        Up to {MAX_VEHICLE_PHOTOS} pictures, {formatBytes(MAX_UPLOAD_BYTES)} each. Every one
+        is converted to WebP before it is stored, so it takes a fraction of the space.
       </p>
 
       <input
@@ -165,7 +164,7 @@ export function VehiclePhotoUpload({
         type="button"
         variant="outline"
         size="sm"
-        disabled={preparing || total >= MAX_PHOTOS}
+        disabled={preparing || total >= MAX_VEHICLE_PHOTOS}
         onClick={() => input.current?.click()}
       >
         {preparing ? <Loader2 className="animate-spin" /> : <ImagePlus />}

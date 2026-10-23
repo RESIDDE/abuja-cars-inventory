@@ -7,6 +7,8 @@ import { z } from 'zod'
 
 import { Field } from '@/components/common/field'
 import { NumberStepper } from '@/components/common/number-stepper'
+import { SignaturePad } from '@/components/common/signature-pad'
+import type { SignaturePadHandle } from '@/components/common/signature-pad'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -29,6 +31,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useStaffMembers } from '@/hooks/use-staff-members'
 import { useRecordMovement, useVehicleEvents } from '@/hooks/use-vehicle-events'
 import { describeDbError } from '@/lib/errors'
+import { uploadSignature } from '@/lib/storage'
 import { formatDate, toDateTimeInputValue, vehicleTitle } from '@/lib/format'
 import type { VehicleEventType, VehicleWithOwner } from '@/types/database'
 
@@ -79,6 +82,9 @@ export function MovementDialog({
   )
   const [staffOther, setStaffOther] = React.useState(false)
 
+  const signature = React.useRef<SignaturePadHandle>(null)
+  const [signed, setSigned] = React.useState(false)
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -101,11 +107,20 @@ export function MovementDialog({
     // normally returns however many went out.
     setKeys(releasing ? heldKeys : (lastRelease?.keys_count ?? heldKeys))
     setStaffOther(false)
+    signature.current?.clear()
+    setSigned(false)
   }, [open, form, releasing, heldKeys, lastRelease])
 
   const onSubmit = form.handleSubmit(async (values) => {
     if (!vehicle) return
     try {
+      // Uploaded before the movement is recorded, so the path can go into the
+      // same transaction as the custody change rather than being bolted on
+      // afterwards.
+      let signaturePath: string | null = null
+      const blob = await signature.current?.toBlob()
+      if (blob) signaturePath = await uploadSignature(vehicle.id, blob)
+
       await recordMovement.mutateAsync({
         vehicleId: vehicle.id,
         eventType,
@@ -115,6 +130,7 @@ export function MovementDialog({
         recipientName: values.recipientName,
         notes: values.notes,
         keysCount: keys,
+        signaturePath,
       })
       toast.success(releasing ? 'Vehicle released' : 'Vehicle checked back in')
       onOpenChange(false)
@@ -250,6 +266,26 @@ export function MovementDialog({
           <Field label="Notes" htmlFor="movementNotes" hint="Optional">
             <Textarea id="movementNotes" rows={3} {...form.register('notes')} />
           </Field>
+
+          <div className="space-y-1.5">
+            <Label>
+              {releasing ? 'Signature — person taking the vehicle' : 'Signature — person returning it'}
+            </Label>
+            <SignaturePad
+              ref={signature}
+              onChange={setSigned}
+              hint={
+                form.watch('recipientName')?.trim() ||
+                vehicle?.owner?.full_name ||
+                'Sign here'
+              }
+            />
+            {releasing && !signed ? (
+              <p className="text-xs text-muted-foreground">
+                Optional, but a signature is the thing that settles a dispute later.
+              </p>
+            ) : null}
+          </div>
 
           <DialogFooter>
             <Button

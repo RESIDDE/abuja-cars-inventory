@@ -175,6 +175,36 @@ The movement dialog falls back to a free-text field when nobody is listed yet,
 and always offers "Someone else…", so a cover shift is never a reason to leave
 the field blank.
 
+## Signatures on a movement
+
+Releasing or checking a vehicle back in offers a signature pad — finger, stylus
+or mouse. The image is WebP, stored in a **private** `movement-signatures`
+bucket and shown through signed URLs, like the vehicle photos.
+
+The pad keeps strokes as points and redraws them rather than painting straight
+to the canvas. A canvas loses its bitmap whenever its backing size changes, so
+a signature would otherwise vanish when the keyboard opens or the phone turns.
+The canvas sets `touch-action: none`, overriding the page's `pan-x pan-y`, or
+signing would scroll the dialog instead of drawing.
+
+The upload happens *before* the movement is recorded, so the path goes into the
+same transaction as the custody change rather than being attached afterwards.
+
+That bucket grants staff **select and insert only — no update or delete**.
+A signature is evidence attached to a movement, and swapping or quietly
+removing one while leaving the movement intact is exactly what should not be
+possible from the app. The trade is that a failed write can leave an orphaned
+object, and deleting a vehicle leaves its signatures behind; clean those up in
+the Supabase dashboard if it ever matters.
+
+### Fingerprints
+
+Not possible, and not a question of screen space. No browser API can capture a
+fingerprint from a customer. WebAuthn authenticates the *device owner* with
+their own Touch ID and never exposes an image, so it cannot enrol a stranger.
+Capturing one would need a dedicated scanner and a native bridge; the signature
+is the web's answer to this.
+
 ## Keys changing hands
 
 Releasing or checking a vehicle back in records **how many keys moved**, with a

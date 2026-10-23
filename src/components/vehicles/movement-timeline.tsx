@@ -1,6 +1,7 @@
-import { ArrowDownLeft, ArrowUpRight, History, KeyRound } from 'lucide-react'
+import { ArrowDownLeft, ArrowUpRight, History, KeyRound, PenLine } from 'lucide-react'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSignatureUrls } from '@/hooks/use-signature-urls'
 import { formatDateTime, formatRelative } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { VehicleEvent } from '@/types/database'
@@ -17,6 +18,8 @@ export function MovementTimeline({
   isLoading,
   className,
 }: MovementTimelineProps) {
+  const { data: signatureUrls = {} } = useSignatureUrls(events)
+
   if (isLoading) {
     return (
       <div className={cn('space-y-3', className)}>
@@ -108,6 +111,28 @@ export function MovementTimeline({
                 <p className="mt-2 whitespace-pre-line text-xs text-muted-foreground">
                   {event.notes}
                 </p>
+              ) : null}
+
+              {event.signature_path ? (
+                <figure className="mt-2.5">
+                  <figcaption className="mb-1 flex items-center gap-1.5 text-[0.7rem] text-muted-foreground">
+                    <PenLine className="size-3" />
+                    Signed by {event.recipient_name ?? (released ? 'the recipient' : 'the sender')}
+                  </figcaption>
+                  <a
+                    href={signatureUrls[event.signature_path]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block w-fit rounded-xl border border-white/50 bg-white/75 p-1"
+                  >
+                    <img
+                      src={signatureUrls[event.signature_path]}
+                      alt="Signature"
+                      loading="lazy"
+                      className="h-16 w-auto max-w-[14rem] object-contain"
+                    />
+                  </a>
+                </figure>
               ) : null}
             </div>
           </li>

@@ -33,6 +33,8 @@ export interface MovementInput {
   notes?: string | null
   /** Null means "not recorded", which leaves the vehicle's key count alone. */
   keysCount?: number | null
+  /** Path of an already-uploaded signature image. */
+  signaturePath?: string | null
 }
 
 /**
@@ -53,6 +55,7 @@ export function useRecordMovement() {
         p_recipient_name: input.recipientName ?? null,
         p_notes: input.notes ?? null,
         p_keys_count: input.keysCount ?? null,
+        p_signature_path: input.signaturePath ?? null,
       })
       if (error) throw error
       return data as VehicleEvent

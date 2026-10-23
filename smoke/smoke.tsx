@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import { BelongingsEditor } from '@/components/vehicles/belongings-editor'
 import { BrandMark } from '@/components/common/brand-mark'
+import { SignaturePad } from '@/components/common/signature-pad'
 import { CurrencyInput } from '@/components/vehicles/currency-input'
 import { CustodyTile } from '@/components/dashboard/custody-tile'
 import { DashboardHero } from '@/components/dashboard/dashboard-hero'
@@ -119,6 +120,7 @@ const events: VehicleEvent[] = [
     recipient_name: 'Amaka Okonkwo',
     notes: 'Collected at the gate.',
     keys_count: 2,
+    signature_path: 'v1/1700000000.webp',
     created_by: null,
     created_at: '2026-10-21T14:30:00Z',
   },
@@ -131,6 +133,7 @@ const events: VehicleEvent[] = [
     recipient_name: null,
     notes: null,
     keys_count: null,
+    signature_path: null,
     created_by: null,
     created_at: '2026-10-20T09:00:00Z',
   },
@@ -187,11 +190,15 @@ const tree = (
       <CurrencyInput value={9_500_000} onChange={noop} />
       <BrandMark />
       <OwnerMatchHint matches={[owner]} onUse={noop} />
+      <SignaturePad hint="Amaka Okonkwo" />
     </MemoryRouter>
   </QueryClientProvider>
 )
 
-const html = renderToString(tree)
+// React's SSR writer puts a <!-- --> marker between adjacent text and an
+// interpolated expression ("Signed by <!-- -->Amaka"), which would make every
+// text assertion below depend on where the JSX happened to split.
+const html = renderToString(tree).replace(/<!--\s*-->/g, '')
 
 const checks: [string, boolean][] = [
   ['hero renders the total', html.includes('All Vehicles')],
@@ -207,6 +214,8 @@ const checks: [string, boolean][] = [
   ['owner mailto', html.includes('mailto:amaka@example.com')],
   ['timeline recipient label', html.includes('Released to')],
   ['timeline shows keys released', html.includes('released')],
+  ['timeline credits the signatory', html.includes('Signed by Amaka Okonkwo')],
+  ['signature pad prompts with the name', html.includes('Sign with a finger, stylus or mouse')],
   ['timeline omits keys when not recorded', !html.includes('brought back')],
   ['empty timeline copy', html.includes('No movements recorded yet.')],
   ['belongings chip', html.includes('Wheel spanner')],

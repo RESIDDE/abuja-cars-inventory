@@ -63,3 +63,35 @@ export async function signedPhotoUrls(paths: string[]): Promise<Record<string, s
   }
   return map
 }
+
+export const SIGNATURES_BUCKET = 'movement-signatures'
+
+/**
+ * Uploads a signature and returns its path.
+ *
+ * Note there is no delete counterpart: the bucket grants staff select and
+ * insert only. A signature is evidence attached to a movement, and quietly
+ * swapping or removing one while leaving the movement intact is exactly what
+ * should not be possible from the app.
+ */
+export async function uploadSignature(vehicleId: string, blob: Blob): Promise<string> {
+  const path = `${vehicleId}/${Date.now()}.webp`
+  const { error } = await supabase.storage
+    .from(SIGNATURES_BUCKET)
+    .upload(path, blob, { contentType: 'image/webp', upsert: false })
+  if (error) throw error
+  return path
+}
+
+export async function signedSignatureUrls(paths: string[]): Promise<Record<string, string>> {
+  if (paths.length === 0) return {}
+  const { data, error } = await supabase.storage
+    .from(SIGNATURES_BUCKET)
+    .createSignedUrls(paths, SIGNED_URL_TTL_SECONDS)
+  if (error) throw error
+  const map: Record<string, string> = {}
+  for (const entry of data ?? []) {
+    if (entry.signedUrl && entry.path) map[entry.path] = entry.signedUrl
+  }
+  return map
+}

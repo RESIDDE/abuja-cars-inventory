@@ -83,6 +83,8 @@ export interface VehicleEvent {
   notes: string | null
   /** Keys handed over on a release, or brought back on a check-in. */
   keys_count: number | null
+  /** Path in the movement-signatures bucket; null when nobody signed. */
+  signature_path: string | null
   created_by: string | null
   created_at: string
 }

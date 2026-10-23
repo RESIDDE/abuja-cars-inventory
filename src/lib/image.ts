@@ -11,8 +11,20 @@ export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 const VIN_MAX_EDGE = 1600
 const VIN_QUALITY = 0.85
 
-const PHOTO_MAX_EDGE = 1800
-const PHOTO_QUALITY = 0.82
+/**
+ * Photo encoding targets.
+ *
+ * These are condition photographs — somebody will zoom in later to argue about
+ * a scratch — so "smallest" is bounded by staying legible. Rather than pick one
+ * quality and hope, the encoder walks down the ladder until the result is under
+ * the target, which adapts to whatever the picture actually is: a plain shot of
+ * a door panel lands at the top of the ladder, a busy forecourt further down.
+ */
+const PHOTO_TARGET_BYTES = 150 * 1024
+/** Dropped to the second value if the ladder bottoms out still over target. */
+const PHOTO_EDGE_STEPS = [1600, 1200] as const
+/** Descending. Below about 0.45 WebP goes visibly blocky. */
+const PHOTO_QUALITY_LADDER = [0.78, 0.7, 0.62, 0.54, 0.46] as const
 
 export function formatBytes(bytes: number) {
   if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`
@@ -86,23 +98,57 @@ export async function fileToWebp(file: File): Promise<PreparedPhoto> {
   const problem = validatePhotoFile(file)
   if (problem) throw new Error(problem)
 
-  const { canvas, width, height } = await drawToCanvas(file, PHOTO_MAX_EDGE)
+  let best: { blob: Blob; width: number; height: number } | null = null
 
-  const blob = await new Promise<Blob | null>((resolve) => {
-    canvas.toBlob(resolve, 'image/webp', PHOTO_QUALITY)
-  })
+  for (const maxEdge of PHOTO_EDGE_STEPS) {
+    const { canvas, width, height } = await drawToCanvas(file, maxEdge)
 
-  if (!blob) throw new Error('That image could not be converted.')
-  if (blob.type !== 'image/webp') {
-    throw new Error('This browser cannot save WebP images. Try Chrome, Edge, Safari or Firefox.')
+    for (const quality of PHOTO_QUALITY_LADDER) {
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/webp', quality)
+      })
+      if (!blob) continue
+      if (blob.type !== 'image/webp') {
+        throw new Error(
+          'This browser cannot save WebP images. Try Chrome, Edge, Safari or Firefox.',
+        )
+      }
+
+      // Keep whichever attempt is smallest, so a browser whose encoder does not
+      // shrink monotonically still ends up with its best result.
+      if (!best || blob.size < best.blob.size) best = { blob, width, height }
+      if (blob.size <= PHOTO_TARGET_BYTES) {
+        return {
+          blob,
+          previewUrl: URL.createObjectURL(blob),
+          width,
+          height,
+          originalBytes: file.size,
+          bytes: blob.size,
+        }
+      }
+    }
+
+    // Already comfortably small at this size; shrinking further would only cost
+    // detail for a few kilobytes.
+    if (best && best.blob.size <= PHOTO_TARGET_BYTES * 1.2) break
   }
+
+  if (!best) throw new Error('That image could not be converted.')
 
   return {
-    blob,
-    previewUrl: URL.createObjectURL(blob),
-    width,
-    height,
+    blob: best.blob,
+    previewUrl: URL.createObjectURL(best.blob),
+    width: best.width,
+    height: best.height,
     originalBytes: file.size,
-    bytes: blob.size,
+    bytes: best.blob.size,
   }
+}
+
+/** Exposed so the ladder itself can be checked without a browser. */
+export const photoEncodingPlan = {
+  targetBytes: PHOTO_TARGET_BYTES,
+  edgeSteps: PHOTO_EDGE_STEPS,
+  qualityLadder: PHOTO_QUALITY_LADDER,
 }

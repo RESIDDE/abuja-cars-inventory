@@ -404,8 +404,20 @@ It suggests; it never blocks. Two people genuinely do share a number sometimes.
 
 The check-in form takes up to **five** pictures of the car, below the owner
 section. Each one is capped at 5 MB and **converted to WebP in the browser**
-before it is uploaded — a 4 MB phone photo typically lands around 300 KB, and the form shows
-the before-and-after so the saving is visible.
+before it is uploaded, and the form shows the before-and-after so the saving is
+visible.
+
+The encoder aims at **150 KB** rather than using one fixed quality. It resizes
+to 1600px, encodes at 0.78, then walks the quality ladder down — 0.70, 0.62,
+0.54, 0.46 — stopping at the first result under target; if it bottoms out still
+too large it redraws at 1200px and tries again, keeping the smallest attempt
+either way. A plain shot of a door panel lands at the top of the ladder, a busy
+forecourt further down.
+
+The floor is deliberate. These are condition photographs and somebody will zoom
+in later to argue about a scratch, so "as small as possible" is bounded by
+staying legible: below about 0.46 WebP goes visibly blocky, and below 1200px a
+plate stops being readable.
 
 They go to a **private** `vehicle-photos` bucket, not a public one: these are
 photographs of customers' cars, usually with plates visible. They are displayed

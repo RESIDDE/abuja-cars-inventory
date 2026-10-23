@@ -30,7 +30,12 @@ import {
 } from '@/lib/format'
 import { normalizeBelongings, normalizeVehicle } from '@/lib/normalize'
 import { parseModelJson } from '@/lib/model-json'
-import { formatBytes, MAX_UPLOAD_BYTES, validatePhotoFile } from '@/lib/image'
+import {
+  formatBytes,
+  MAX_UPLOAD_BYTES,
+  photoEncodingPlan,
+  validatePhotoFile,
+} from '@/lib/image'
 import { formatMileage } from '@/lib/format'
 import { MAX_VEHICLE_PHOTOS } from '@/lib/constants'
 import { normalizePhotos } from '@/lib/normalize'
@@ -513,6 +518,33 @@ const units: [string, unknown, unknown][] = [
   ['5 MB limit matches the bucket', MAX_UPLOAD_BYTES, 5_242_880],
   // Mirrors the check constraint on vi_vehicles.photos.
   ['at most five pictures per vehicle', MAX_VEHICLE_PHOTOS, 5],
+
+  // The encoder walks this ladder until it is under target. A careless edit
+  // that made it ascend, or dropped the floor into blockiness, would silently
+  // ship worse photographs.
+  [
+    'quality ladder descends',
+    photoEncodingPlan.qualityLadder.every(
+      (q, i, all) => i === 0 || q < all[i - 1],
+    ),
+    true,
+  ],
+  [
+    'quality floor stays above visible blockiness',
+    Math.min(...photoEncodingPlan.qualityLadder) >= 0.45,
+    true,
+  ],
+  [
+    'top of the ladder is not lossless-ish',
+    Math.max(...photoEncodingPlan.qualityLadder) <= 0.85,
+    true,
+  ],
+  [
+    'edge steps descend and stay legible',
+    photoEncodingPlan.edgeSteps.every((e, i, all) => (i === 0 || e < all[i - 1]) && e >= 1200),
+    true,
+  ],
+  ['target is well under the upload cap', photoEncodingPlan.targetBytes < MAX_UPLOAD_BYTES, true],
   [
     'oversize file rejected with its size',
     validatePhotoFile({ type: 'image/jpeg', size: 6_000_000, name: 'big.jpg' }),
